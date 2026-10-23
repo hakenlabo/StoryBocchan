@@ -6,14 +6,14 @@
   <title>アニメ・プリプロ</title>
   <link rel="stylesheet" href="css/app.css">
 </head>
-<body>
+<body data-view="map">
   <header class="app-header">
     <div class="brand">アニメ・プリプロ</div>
     <input id="project-title" class="project-title" type="text" aria-label="作品名">
     <nav class="view-tabs">
-      <button class="tab active" type="button">マップ</button>
-      <button class="tab" type="button" disabled title="ステップ2で実装予定">タイムライン</button>
-      <button class="tab" type="button" disabled title="ステップ4で実装予定">Vコンテ</button>
+      <button class="tab active" type="button" data-view="map" title="マップと、下にタイムライン">マップ</button>
+      <button class="tab" type="button" data-view="timeline" title="タイムラインを大きく表示">タイムライン</button>
+      <button class="tab soon" type="button" data-view="vconte" title="ステップ4で追加予定">Vコンテ<small>準備中</small></button>
     </nav>
     <div class="settings">
       <label>fps <select id="setting-fps"></select></label>
@@ -35,6 +35,7 @@
   </div>
 
   <main class="workspace">
+   <div class="workspace-main">
     <div id="map-viewport" class="map-viewport">
       <div id="map-world" class="map-world">
         <svg id="map-lines" class="map-lines" xmlns="http://www.w3.org/2000/svg"></svg>
@@ -51,6 +52,21 @@
       <p class="tray-hint">剥がしたカードはここに保留されます。消えません。<br>「戻す」かマップへドラッグで戻せます。</p>
       <ul id="tray-list" class="tray-list"></ul>
     </aside>
+   </div>
+
+    <section id="timeline" class="timeline">
+      <div class="tl-head">
+        <span class="tl-title">タイムライン</span>
+        <span id="tl-total" class="tl-total"></span>
+        <span class="tl-hint">マップからドラッグで採用 ／ ドラッグで並べ替え ／ 右端をドラッグか尺の数字をタップで尺を変更</span>
+        <span class="tl-zoom">
+          <button id="tl-zoom-out" type="button" title="縮める">－</button>
+          <span id="tl-zoom-label" class="zoom-label">100%</span>
+          <button id="tl-zoom-in" type="button" title="伸ばす">＋</button>
+        </span>
+      </div>
+      <div id="tl-scroll" class="tl-scroll"><div id="tl-track" class="tl-track"></div></div>
+    </section>
   </main>
 
   <div id="toast" class="toast" role="status"></div>
@@ -62,6 +78,7 @@
   <script src="js/storage.js"></script>
   <script src="js/map.js"></script>
   <script src="js/tray.js"></script>
+  <script src="js/timeline.js"></script>
   <script src="js/app.js"></script>
 </body>
 </html>

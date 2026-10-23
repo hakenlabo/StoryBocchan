@@ -81,7 +81,7 @@
     el.className = 'card';
     el.dataset.id = c.id;
     el.innerHTML =
-      '<div class="card-thumb"></div>' +
+      '<div class="card-thumb"><span class="card-badge"></span></div>' +
       '<div class="card-text"></div>' +
       '<button class="card-peel" type="button" title="保留トレイへ（Delete）">剥がす</button>';
     el.querySelector('.card-peel').addEventListener('click', function (e) {
@@ -94,7 +94,10 @@
   function render() {
     const active = Store.activeCards();
     const ratio = U.aspectRatio(Store.settings().aspect);
+    const fps = Store.settings().fps;
     const seen = new Set();
+    const tlIndex = new Map();
+    Store.timelineCards().forEach(function (c, i) { tlIndex.set(c.id, i); });
 
     active.forEach(function (c) {
       let el = els.get(c.id);
@@ -111,6 +114,11 @@
       el.classList.toggle('selected', c.id === selectedId);
       el.classList.toggle('drop-target', c.id === dropTargetId);
       el.classList.toggle('dragging', !!(drag && drag.started && drag.movingSet.has(c.id)));
+      // タイムラインに採用済みなら「#番号 尺」を出す
+      const badge = el.querySelector('.card-badge');
+      const ti = tlIndex.get(c.id);
+      el.classList.toggle('adopted', ti !== undefined);
+      badge.textContent = ti !== undefined ? '#' + (ti + 1) + '  ' + U.framesToLabel(c.duration, fps) : '';
       if (c.id !== editingId) {
         const t = el.querySelector('.card-text');
         t.textContent = c.text;
@@ -400,8 +408,15 @@
       pos[id] = { x: drag.origin[id].x + dx / view.z, y: drag.origin[id].y + dy / view.z };
     });
     drag.overTray = AP.Tray.isOver(e.clientX, e.clientY);
-    drag.target = drag.overTray ? null : cardAtClient(e.clientX, e.clientY, drag.movingSet);
+    drag.overTimeline = !drag.overTray && AP.Timeline.isOver(e.clientX, e.clientY);
+    drag.target = (drag.overTray || drag.overTimeline) ? null : cardAtClient(e.clientX, e.clientY, drag.movingSet);
     AP.Tray.setDropHighlight(drag.overTray);
+    if (drag.overTimeline) {
+      AP.Timeline.autoscroll(e.clientX);
+      AP.Timeline.showInsert(e.clientX, drag.id);
+    } else {
+      AP.Timeline.hideInsert();
+    }
     dropTargetId = drag.target;
     Store.moveCards(pos); // → render
   }
@@ -411,6 +426,7 @@
     drag = null;
     dropTargetId = null;
     AP.Tray.setDropHighlight(false);
+    AP.Timeline.hideInsert();
 
     if (cancelled) {
       if (d.started) Store.moveCards(d.origin);
@@ -432,6 +448,12 @@
     if (d.overTray) {
       Store.moveCards(d.origin); // 戻したとき元の位置に出るように
       peel(d.id);
+    } else if (d.overTimeline) {
+      // 採用：カードはマップにも残る（同じカードを別のビューで見ているだけ）
+      const wasAdopted = Store.get(d.id).timelineOrder !== null;
+      Store.moveCards(d.origin);
+      Store.adopt(d.id, AP.Timeline.indexAt(e.clientX, d.id));
+      U.toast(wasAdopted ? 'タイムラインの順番を変えました' : 'タイムラインに採用しました');
     } else if (d.target) {
       if (!attachTo(d.id, d.target)) Store.moveCards(d.origin); // 付けられないときは元の位置へ
     } else {

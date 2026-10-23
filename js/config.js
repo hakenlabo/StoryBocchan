@@ -34,6 +34,19 @@ AP.CONFIG = {
   WHEEL_ZOOM_WITHOUT_CTRL: false, // true にするとホイールだけでズーム（Windowsのマウス向け）
   FIT_PADDING_PX: 60,          // 「全体表示」の余白
 
+  // ---- タイムライン ----
+  TL_PX_PER_SEC: 80,           // 1秒あたりの幅（ズーム100%のとき）
+  TL_ZOOM_STEP: 1.25,          // －／＋ボタン1回の倍率
+  TL_ZOOM_MIN: 0.25,
+  TL_ZOOM_MAX: 6,
+  TL_MIN_CARD_PX: 6,           // 尺がとても短いカードでも最低この幅は描く
+  TL_PADDING_PX: 16,           // 帯の左右の余白
+  TL_RESIZE_STEP_FRAMES: 1,    // 右端をドラッグして尺を変えるときの刻み（コマ）
+  TL_AUTOSCROLL_EDGE_PX: 48,   // ドラッグ中、帯の端からこの距離に入ると自動スクロール
+  TL_AUTOSCROLL_SPEED: 14,
+  TL_DROP_ON_MAP_UNADOPTS: true, // タイムラインのカードをマップへドラッグで戻すと「外す」
+  MIN_DURATION_FRAMES: 1,
+
   // ---- 保存 ----
   AUTOSAVE_DELAY_MS: 500,      // 最後の変更からこの時間で自動保存
 

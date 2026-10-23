@@ -30,7 +30,10 @@
 
     const fps = document.getElementById('setting-fps');
     fillSelect(fps, C.FPS_OPTIONS, Store.settings().fps);
-    fps.addEventListener('change', function () { Store.setSetting('fps', parseInt(fps.value, 10)); });
+    fps.addEventListener('change', function () {
+      Store.setFps(parseInt(fps.value, 10));
+      U.toast('秒数が変わらないように、尺のコマ数を' + fps.value + 'fpsに換算しました');
+    });
 
     const aspect = document.getElementById('setting-aspect');
     fillSelect(aspect, C.ASPECT_OPTIONS, Store.settings().aspect);
@@ -54,6 +57,18 @@
     };
     document.addEventListener('ap:select', update);
     update();
+  }
+
+  function setupTabs() {
+    document.querySelectorAll('.view-tabs .tab').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        const v = btn.dataset.view;
+        if (v === 'vconte') return U.toast('Vコンテはステップ4で追加予定です');
+        document.body.dataset.view = v;
+        document.querySelectorAll('.view-tabs .tab').forEach(function (b) { b.classList.toggle('active', b === btn); });
+        AP.Timeline.render();
+      });
+    });
   }
 
   function setupKeys() {
@@ -95,7 +110,9 @@
 
     MapView.init();
     AP.Tray.init();
+    AP.Timeline.init();
     setupHeader();
+    setupTabs();
     setupToolbar();
     setupKeys();
     MapView.fit();

@@ -205,5 +205,69 @@
     emit('restore');
   };
 
+  // ---- タイムライン ----
+  // timelineOrder はマップのツリーとは無関係。トレイ中のカードも番号を持ち続け、戻すと元の並びに入る
+
+  // タイムラインに並ぶカード（activeで採用済み）を順番どおりに
+  S.timelineCards = function () {
+    return project.cards
+      .filter(function (c) { return c.status === 'active' && c.timelineOrder !== null; })
+      .sort(function (a, b) { return a.timelineOrder - b.timelineOrder; });
+  };
+
+  // トレイ中も含めて番号を 0,1,2… に振り直す
+  function normalizeOrders() {
+    project.cards
+      .filter(function (c) { return c.timelineOrder !== null; })
+      .sort(function (a, b) { return a.timelineOrder - b.timelineOrder; })
+      .forEach(function (c, i) { c.timelineOrder = i; });
+  }
+
+  // 採用（またはタイムライン内での並べ替え）。index は見えている並びの中での挿入位置
+  S.adopt = function (id, index) {
+    const card = byId.get(id);
+    if (!card) return;
+    const list = S.timelineCards().filter(function (c) { return c.id !== id; });
+    index = U.clamp(index, 0, list.length);
+    const prev = list[index - 1];
+    const next = list[index];
+    if (prev && next) card.timelineOrder = (prev.timelineOrder + next.timelineOrder) / 2;
+    else if (prev) card.timelineOrder = prev.timelineOrder + 1;
+    else if (next) card.timelineOrder = next.timelineOrder - 1;
+    else card.timelineOrder = 0;
+    normalizeOrders();
+    emit('timeline');
+  };
+
+  S.unadopt = function (id) {
+    const card = byId.get(id);
+    if (!card) return;
+    card.timelineOrder = null;
+    normalizeOrders();
+    emit('timeline');
+  };
+
+  S.setDuration = function (id, frames) {
+    const card = byId.get(id);
+    if (!card) return;
+    card.duration = Math.max(C.MIN_DURATION_FRAMES, Math.round(frames));
+    emit('duration');
+  };
+
+  S.totalFrames = function () {
+    return S.timelineCards().reduce(function (sum, c) { return sum + c.duration; }, 0);
+  };
+
+  // fpsを変えたら、秒数が変わらないように全カードの尺（コマ数）を換算する
+  S.setFps = function (fps) {
+    const old = project.settings.fps;
+    if (fps === old) return;
+    project.cards.forEach(function (c) {
+      c.duration = Math.max(C.MIN_DURATION_FRAMES, Math.round(c.duration * fps / old));
+    });
+    project.settings.fps = fps;
+    emit('settings');
+  };
+
   AP.Store = S;
 })();
