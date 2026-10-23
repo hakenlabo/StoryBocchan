@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+  <title>アニメ・プリプロ</title>
+  <link rel="stylesheet" href="css/app.css">
+</head>
+<body>
+  <header class="app-header">
+    <div class="brand">アニメ・プリプロ</div>
+    <input id="project-title" class="project-title" type="text" aria-label="作品名">
+    <nav class="view-tabs">
+      <button class="tab active" type="button">マップ</button>
+      <button class="tab" type="button" disabled title="ステップ2で実装予定">タイムライン</button>
+      <button class="tab" type="button" disabled title="ステップ4で実装予定">Vコンテ</button>
+    </nav>
+    <div class="settings">
+      <label>fps <select id="setting-fps"></select></label>
+      <label>画面比 <select id="setting-aspect"></select></label>
+    </div>
+    <div id="save-status" class="save-status">起動中…</div>
+  </header>
+
+  <div class="toolbar">
+    <button id="btn-add" type="button" title="画面の真ん中にカードを作る（空白をダブルクリックでも作れます）">＋ カード</button>
+    <button id="btn-add-child" type="button" title="選択中のカードに子カードを足す（Tab）">＋ 子カード</button>
+    <button id="btn-peel" type="button" title="選択中のカードを保留トレイへ（Delete）">剥がす</button>
+    <span class="sep"></span>
+    <button id="btn-zoom-out" type="button" title="縮小">－</button>
+    <span id="zoom-label" class="zoom-label">100%</span>
+    <button id="btn-zoom-in" type="button" title="拡大">＋</button>
+    <button id="btn-fit" type="button" title="全体を表示（⌘/Ctrl+0）">全体表示</button>
+    <span class="hint">空白をダブルクリックでカード ／ カードを別カードに重ねると子に ／ 線をクリックで切り離し</span>
+  </div>
+
+  <main class="workspace">
+    <div id="map-viewport" class="map-viewport">
+      <div id="map-world" class="map-world">
+        <svg id="map-lines" class="map-lines" xmlns="http://www.w3.org/2000/svg"></svg>
+        <div id="map-cards"></div>
+      </div>
+    </div>
+
+    <aside id="tray" class="tray">
+      <div class="tray-head">
+        <button id="tray-toggle" class="tray-toggle" type="button" title="トレイを開く／たたむ">⇆</button>
+        <span class="tray-title">保留トレイ</span>
+        <span id="tray-count" class="tray-count"></span>
+      </div>
+      <p class="tray-hint">剥がしたカードはここに保留されます。消えません。<br>「戻す」かマップへドラッグで戻せます。</p>
+      <ul id="tray-list" class="tray-list"></ul>
+    </aside>
+  </main>
+
+  <div id="toast" class="toast" role="status"></div>
+
+  <!-- 読み込み順に意味があります（ES Modulesは使わない方針） -->
+  <script src="js/config.js"></script>
+  <script src="js/util.js"></script>
+  <script src="js/model.js"></script>
+  <script src="js/storage.js"></script>
+  <script src="js/map.js"></script>
+  <script src="js/tray.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
