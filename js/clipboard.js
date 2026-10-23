@@ -52,7 +52,7 @@
   function copyStrokes() {
     const strokes = AP.Draw.currentStrokes();
     if (!strokes.length) { U.toast('コピーする絵がありません'); return null; }
-    clip = { kind: 'strokes', strokes: JSON.parse(JSON.stringify(strokes)), sig: '［アニメ・プリプロの絵：' + strokes.length + '本の線］' };
+    clip = { kind: 'strokes', strokes: JSON.parse(JSON.stringify(strokes)), sig: '［' + C.APP_NAME + 'の絵：' + strokes.length + '本の線］' };
     return clip;
   }
 

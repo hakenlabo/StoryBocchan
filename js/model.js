@@ -55,6 +55,7 @@
   function normalize(p) {
     p.version = p.version || PROJECT_VERSION;
     p.settings = Object.assign(defaultSettings(), p.settings || {});
+    p.sequence = Array.isArray(p.sequence) ? p.sequence : null; // Vコンテのシーン構成 [{id, on}]。null＝全部をツリーの順に
     p.cards = (p.cards || []).map(function (c) {
       const base = makeCard();
       const card = Object.assign(base, c);
@@ -110,6 +111,7 @@
     return {
       title: project.title,
       settings: Object.assign({}, project.settings),
+      sequence: project.sequence ? project.sequence.map(function (x) { return Object.assign({}, x); }) : null,
       cards: project.cards.map(function (c) { return Object.assign({}, c); }),
     };
   }
@@ -153,6 +155,7 @@
   function apply(state) {
     project.title = state.title;
     project.settings = Object.assign({}, state.settings);
+    project.sequence = state.sequence ? state.sequence.map(function (x) { return Object.assign({}, x); }) : null;
     project.cards = state.cards.map(function (c) { return Object.assign({}, c); });
     reindex();
     applying = true;
@@ -414,13 +417,16 @@
   // timelineOrder はマップのツリーとは無関係。トレイ中のカードも番号を持ち続け、戻すと元の並びに入る
 
   // タイムラインに並ぶカード（activeで採用済み）を順番どおりに
-  S.timelineCards = function () {
+  // sceneId を渡すとそのシーン（ツリー）のカットだけ
+  S.timelineCards = function (sceneId) {
     return project.cards
       .filter(function (c) {
         if (c.status !== 'active' || c.timelineOrder === null) return false;
-        if (!c.linkOf) return true;
-        const src = byId.get(c.linkOf);
-        return !!src && src.status === 'active'; // 元のカードを剥がしている間は連動カットも隠す
+        if (c.linkOf) {
+          const src = byId.get(c.linkOf);
+          if (!src || src.status !== 'active') return false; // 元のカードを剥がしている間は連動カットも隠す
+        }
+        return !sceneId || S.sceneOf(c) === sceneId;
       })
       .sort(function (a, b) { return a.timelineOrder - b.timelineOrder; });
   };
@@ -437,7 +443,7 @@
   S.adopt = function (id, index) {
     const card = byId.get(id);
     if (!card) return;
-    const list = S.timelineCards().filter(function (c) { return c.id !== id; });
+    const list = S.timelineCards(S.sceneOf(card)).filter(function (c) { return c.id !== id; }); // 同じシーンの中での位置
     index = U.clamp(index, 0, list.length);
     const prev = list[index - 1];
     const next = list[index];
@@ -450,20 +456,120 @@
   };
 
   // まとめて採用：ids をこの順に、beforeId のカードの前（null なら最後）へ並べる。すでに並んでいるものもこの流れに入れ直す
-  S.adoptMany = function (ids, beforeId) {
-    const set = new Set(ids);
-    const vis = S.timelineCards().filter(function (c) { return !set.has(c.id); });
-    let idx = beforeId ? vis.findIndex(function (c) { return c.id === beforeId; }) : vis.length;
-    if (idx < 0) idx = vis.length;
-    const prev = vis[idx - 1], next = vis[idx];
-    const lo = prev ? prev.timelineOrder : (next ? next.timelineOrder - 1 : 0);
-    const hi = next ? next.timelineOrder : lo + 1;
-    ids.forEach(function (id, k) {
+  // カットはそれぞれ自分のシーンに入る。sceneId のシーンのものは beforeId の前（null なら最後）、ほかのシーンのものはそのシーンの最後へ
+  S.adoptMany = function (ids, beforeId, sceneId) {
+    const groups = new Map();
+    ids.forEach(function (id) {
       const c = byId.get(id);
-      if (c) c.timelineOrder = lo + (hi - lo) * (k + 1) / (ids.length + 1);
+      if (!c) return;
+      const sc = S.sceneOf(c);
+      if (!groups.has(sc)) groups.set(sc, []);
+      groups.get(sc).push(id);
+    });
+    groups.forEach(function (gids, sc) {
+      const set = new Set(gids);
+      const vis = S.timelineCards(sc).filter(function (c) { return !set.has(c.id); });
+      let idx = vis.length;
+      if (sc === sceneId && beforeId) {
+        const i = vis.findIndex(function (c) { return c.id === beforeId; });
+        if (i >= 0) idx = i;
+      }
+      const prev = vis[idx - 1], next = vis[idx];
+      const lo = prev ? prev.timelineOrder : (next ? next.timelineOrder - 1 : maxOrder() + 1);
+      const hi = next ? next.timelineOrder : lo + 1;
+      gids.forEach(function (id, k) { byId.get(id).timelineOrder = lo + (hi - lo) * (k + 1) / (gids.length + 1); });
     });
     normalizeOrders();
     emit('timeline');
+  };
+
+  function maxOrder() {
+    let m = -1;
+    project.cards.forEach(function (c) { if (c.timelineOrder !== null) m = Math.max(m, c.timelineOrder); });
+    return m;
+  }
+
+  // ---- シーン（マップのツリー1本＝1シーン） ----
+  // カードのシーン＝いちばん上の先祖のid。連動カットは元のカードのシーン。
+  // 子のないひとりぼっちのカードは、まとめて「ツリーに入っていないカード」（LOOSE）のシーンにする
+  const LOOSE = '__loose';
+  S.LOOSE_SCENE = LOOSE;
+  S.isScene = function (id) { return id === LOOSE || !!byId.get(id); };
+  S.sceneOf = function (card) {
+    if (typeof card === 'string') card = byId.get(card);
+    if (!card) return null;
+    let cur = S.source(card);
+    const guard = new Set();
+    while (cur.parentId && byId.get(cur.parentId) && !guard.has(cur.id)) {
+      guard.add(cur.id);
+      cur = byId.get(cur.parentId);
+    }
+    const hasKids = project.cards.some(function (c) { return c.parentId === cur.id && !c.linkOf && c.status === 'active'; });
+    return hasKids ? cur.id : LOOSE;
+  };
+
+  S.sceneName = function (sceneId) {
+    if (sceneId === LOOSE) return 'ツリーに入っていないカード';
+    const c = byId.get(sceneId);
+    return (c && c.text) || '（無題のシーン）';
+  };
+
+  // カットのあるシーン（マップのいちばん上の階層の順）
+  S.scenes = function () {
+    const ids = [];
+    S.timelineCards().forEach(function (c) {
+      const sc = S.sceneOf(c);
+      if (ids.indexOf(sc) < 0) ids.push(sc);
+    });
+    const rootOrder = function (id) {
+      if (id === LOOSE) return 2e9; // ツリーに入っていないカードは最後
+      const c = byId.get(id);
+      return c && c.treeOrder !== null ? c.treeOrder : 1e9;
+    };
+    return ids.sort(function (a, b) { return rootOrder(a) - rootOrder(b); });
+  };
+
+  // Vコンテのシーン構成：[{id, on}]。保存した並びに、新しくできたシーンを後ろに足したもの
+  S.sequence = function () {
+    const live = S.scenes();
+    const out = [];
+    (project.sequence || []).forEach(function (x) {
+      if (live.indexOf(x.id) >= 0 && !out.some(function (o) { return o.id === x.id; })) out.push({ id: x.id, on: x.on !== false });
+    });
+    live.forEach(function (id) { if (!out.some(function (o) { return o.id === id; })) out.push({ id: id, on: true }); });
+    return out;
+  };
+
+  S.setSequence = function (list) {
+    project.sequence = list.map(function (x) { return { id: x.id, on: x.on !== false }; });
+    emit('sequence');
+  };
+
+  // Vコンテで流す順：構成でオンのシーンを順に、それぞれのカットを順に
+  S.playlist = function () {
+    const out = [];
+    let sceneNo = 0;
+    S.sequence().forEach(function (x) {
+      if (!x.on) return;
+      sceneNo++;
+      S.timelineCards(x.id).forEach(function (c, i) {
+        out.push({ card: c, sceneId: x.id, sceneNo: sceneNo, cutNo: i + 1 });
+      });
+    });
+    return out;
+  };
+
+  // カードid（連動カットは元のカード）→ シーン内のカット番号（1始まり）の配列
+  S.cutNumbers = function () {
+    const m = new Map();
+    S.scenes().forEach(function (sc) {
+      S.timelineCards(sc).forEach(function (c, i) {
+        const id = c.linkOf || c.id;
+        if (!m.has(id)) m.set(id, []);
+        m.get(id).push(i + 1);
+      });
+    });
+    return m;
   };
 
   S.unadopt = function (id) {
@@ -515,8 +621,8 @@
     emit('duration');
   };
 
-  S.totalFrames = function () {
-    return S.timelineCards().reduce(function (sum, c) { return sum + c.duration; }, 0);
+  S.totalFrames = function (sceneId) {
+    return S.timelineCards(sceneId).reduce(function (sum, c) { return sum + c.duration; }, 0);
   };
 
   // fpsを変えたら、秒数が変わらないように全カードの尺（コマ数）を換算する

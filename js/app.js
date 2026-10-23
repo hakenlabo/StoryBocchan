@@ -41,9 +41,9 @@
 
     // 別のプロジェクトに切り替えたら、見出しと今の画面を作り直す
     document.addEventListener('ap:projectloaded', function () { refreshHeaderAndView(true); });
-    document.title = Store.project().title + ' - アニメ・プリプロ';
+    document.title = Store.project().title + ' - ' + C.APP_NAME;
     Store.subscribe(function (reason) {
-      if (reason === 'title') document.title = Store.project().title + ' - アニメ・プリプロ';
+      if (reason === 'title') document.title = Store.project().title + ' - ' + C.APP_NAME;
     });
   }
 
@@ -52,7 +52,7 @@
     document.getElementById('project-title').value = Store.project().title;
     document.getElementById('setting-fps').value = String(Store.settings().fps);
     document.getElementById('setting-aspect').value = String(Store.settings().aspect);
-    document.title = Store.project().title + ' - アニメ・プリプロ';
+    document.title = Store.project().title + ' - ' + C.APP_NAME;
     if (fit) MapView.fit();
     const v = document.body.dataset.view;
     if (v === 'vconte') AP.Vconte.show();

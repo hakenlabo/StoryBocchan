@@ -189,7 +189,7 @@
     const c = cur();
     const fps = Store.settings().fps;
     const paper = Store.source(card).paper;
-    const list = Store.timelineCards();
+    const list = Store.timelineCards(Store.sceneOf(card));
     const i = list.findIndex(function (x) { return x.id === cardId; });
     titleEl.textContent = 'カメラワーク　' + (i >= 0 ? '#' + (i + 1) + '  ' : '') + (Store.source(card).text || '（無題）') +
       '　（尺 ' + U.framesToLabel(card.duration, fps) + '）';

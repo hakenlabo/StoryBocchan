@@ -149,7 +149,7 @@
 
   function updateTitle() {
     const card = Store.get(cardId);
-    const list = Store.timelineCards();
+    const list = Store.timelineCards(Store.sceneOf(card)); // 前後移動は同じシーンの中で
     const i = list.findIndex(function (c) { return c.id === cardId; });
     titleEl.textContent = (i >= 0 ? '#' + (i + 1) + '  ' : '') + (card.linkOf ? '🔗 ' : '') + (Store.source(card).text || '（無題）');
     prevBtn.disabled = !(i > 0);
@@ -158,7 +158,7 @@
   }
 
   function go(delta) {
-    const list = Store.timelineCards();
+    const list = Store.timelineCards(Store.sceneOf(cardId));
     const i = list.findIndex(function (c) { return c.id === cardId; });
     const next = list[i + delta];
     if (i < 0 || !next) return;

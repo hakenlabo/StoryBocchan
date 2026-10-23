@@ -476,7 +476,8 @@ body[data-view="timeline"] .toolbar > :not(.keep) { visibility: hidden; }
 .vconte { display: none; }
 body[data-view="vconte"] .workspace-main,
 body[data-view="vconte"] .timeline { display: none; }
-body[data-view="vconte"] .vconte { flex: 1; min-height: 0; display: flex; flex-direction: column; background: #2b2d31; }
+body[data-view="vconte"] .vconte { flex: 1; min-height: 0; display: flex; background: #2b2d31; }
+.vc-main { flex: 1; min-width: 0; display: flex; flex-direction: column; }
 body[data-view="vconte"] .toolbar > * { visibility: hidden; }
 .vc-stage { position: relative; flex: 1; min-height: 0; display: flex; align-items: center; justify-content: center; overflow: hidden; }
 #vc-canvas { background: #fff; box-shadow: 0 4px 24px rgba(0,0,0,.4); }
@@ -728,3 +729,25 @@ body[data-view="outline"] .toolbar > * { visibility: hidden; }
 }
 .card.multi .card-peel { display: none !important; }
 #btn-multi.active { background: #7c3aed; color: #fff; border-color: #7c3aed; }
+
+/* ---- シーン ---- */
+.tl-scene { max-width: 260px; min-height: 28px; border: 1px solid var(--border); border-radius: 6px; background: #fff; font-size: 13px; }
+.vc-seg.alt { background: #565b63; }
+.vc-seg.scene-start { border-left: 3px solid #f2c94c; }
+.vc-seq { width: 250px; flex: none; background: #34373c; color: #e6e8eb; padding: 12px; overflow-y: auto; border-left: 1px solid #44474d; }
+.vc-seq-head { font-weight: 700; margin-bottom: 4px; }
+.vc-seq-hint { font-size: 11px; color: #aab0b8; margin: 0 0 10px; line-height: 1.5; }
+.vc-seq-row { display: flex; align-items: center; gap: 4px; padding: 6px; margin-bottom: 4px; border-radius: 6px; background: #3f4248; }
+.vc-seq-row.off { opacity: .5; }
+.vc-seq-main { flex: 1; min-width: 0; display: flex; align-items: center; gap: 6px; cursor: pointer; }
+.vc-seq-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13px; }
+.vc-seq-meta { font-size: 10px; color: #aab0b8; white-space: nowrap; }
+.vc-seq-row button { min-height: 26px; padding: 0 6px; background: #4a4e55; color: #fff; border-color: #55595f; }
+.vc-seq-total { margin-top: 10px; font-size: 13px; font-weight: 700; color: #f2c94c; }
+.vc-seq-empty { font-size: 12px; color: #aab0b8; line-height: 1.6; }
+@media (max-width: 900px) { .vc-seq { width: 190px; } }
+/* シーン構成：名前を1行目に、カット数と↑↓を2行目に */
+.vc-seq-row { flex-wrap: wrap; }
+.vc-seq-main { flex: 1 1 100%; }
+.vc-seq-name { white-space: normal; word-break: break-word; }
+.vc-seq-meta { flex: 1; padding-left: 22px; }

@@ -3,12 +3,12 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
-  <title>アニメ・プリプロ</title>
+  <title>ストーリー坊ちゃん</title>
   <link rel="stylesheet" href="css/app.css">
 </head>
 <body data-view="map">
   <header class="app-header">
-    <div class="brand">アニメ・プリプロ</div>
+    <div class="brand">ストーリー坊ちゃん</div>
     <button id="btn-project" type="button" title="新しいプロジェクト・ほかのプロジェクトを開く・ファイルから開く">📁 プロジェクト</button>
     <input id="project-title" class="project-title" type="text" aria-label="作品名">
     <button id="btn-save" type="button" title="作品をファイル（zip）に保存。バックアップや別の端末へ（⌘/Ctrl+S）">💾 保存</button>
@@ -76,6 +76,7 @@
     <section id="timeline" class="timeline">
       <div class="tl-head">
         <span class="tl-title">タイムライン</span>
+        <select id="tl-scene" class="tl-scene" title="表示するシーン（マップのツリー1本＝1シーン）。マップでカードを選ぶと、そのシーンに切り替わります"></select>
         <span id="tl-total" class="tl-total"></span>
         <span class="tl-hint">マップからドラッグで採用 ／ ドラッグで並べ替え ／ 右端をドラッグか尺の数字をタップで尺を変更</span>
         <span class="tl-zoom">
@@ -106,6 +107,7 @@
     </section>
 
     <section id="vconte" class="vconte">
+     <div class="vc-main">
       <div id="vc-stage" class="vc-stage">
         <canvas id="vc-canvas"></canvas>
         <p id="vc-empty" class="vc-empty" hidden>タイムラインにカードを採用すると、ここで再生できます</p>
@@ -127,6 +129,13 @@
         <button id="vc-camera" type="button" title="いま表示しているカットのカメラワーク">🎥 カメラ</button>
         <button id="vc-draw" type="button" title="いま表示しているカットを描画パネルで開く">✎ このカットを描く</button>
       </div>
+     </div>
+      <aside class="vc-seq">
+        <div class="vc-seq-head">シーン構成</div>
+        <p class="vc-seq-hint">流すシーンにチェック、↑↓で順番を決めます。</p>
+        <div id="vc-seq-list" class="vc-seq-list"></div>
+        <div id="vc-seq-total" class="vc-seq-total"></div>
+      </aside>
     </section>
   </main>
 

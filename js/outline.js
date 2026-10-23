@@ -46,7 +46,7 @@
     el.dataset.id = c.id;
     el.style.setProperty('--depth', r.depth);
     const meta = [];
-    if (tl.has(c.id)) meta.push(tl.get(c.id).map(function (i) { return '#' + (i + 1); }).join(' '));
+    if (tl.has(c.id)) meta.push(tl.get(c.id).map(function (i) { return '#' + i; }).join(' '));
     if (c.strokes.length) meta.push('✎');
     el.innerHTML =
       '<span class="ol-bullet" title="マップで選択"></span>' +
@@ -76,12 +76,7 @@
     if (!keep && a && a.classList && a.classList.contains('ol-text')) {
       keep = { id: a.closest('.ol-row').dataset.id, caret: a.selectionStart };
     }
-    const tl = new Map();
-    Store.timelineCards().forEach(function (c, i) {
-      const id = c.linkOf || c.id;
-      if (!tl.has(id)) tl.set(id, []);
-      tl.get(id).push(i);
-    });
+    const tl = Store.cutNumbers();
     rebuilding = true;
     list.innerHTML = '';
     rows().forEach(function (r) { list.appendChild(rowEl(r, tl)); });

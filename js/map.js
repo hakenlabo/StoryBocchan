@@ -106,12 +106,7 @@
     const ratio = U.aspectRatio(Store.settings().aspect);
     const fps = Store.settings().fps;
     const seen = new Set();
-    const tlIndex = new Map();
-    Store.timelineCards().forEach(function (c, i) {
-      const id = c.linkOf || c.id; // 連動カットは元のカードに番号を足す
-      if (!tlIndex.has(id)) tlIndex.set(id, []);
-      tlIndex.get(id).push(i);
-    });
+    const tlIndex = Store.cutNumbers(); // シーン内のカット番号（連動カットは元のカードに足す）
 
     active.forEach(function (c) {
       let el = els.get(c.id);
@@ -142,8 +137,8 @@
       const ti = tlIndex.get(c.id);
       el.classList.toggle('adopted', ti !== undefined);
       badge.textContent = !ti ? '' : ti.length === 1
-        ? '#' + (ti[0] + 1) + '  ' + U.framesToLabel(c.duration, fps)
-        : ti.map(function (i) { return '#' + (i + 1); }).join(' ');
+        ? '#' + ti[0] + '  ' + U.framesToLabel(c.duration, fps)
+        : ti.map(function (i) { return '#' + i; }).join(' ');
       if (c.id !== editingId) {
         const t = el.querySelector('.card-text');
         t.textContent = c.text;
@@ -411,9 +406,7 @@
 
   // すでにタイムラインにあるカードをもう一度置いたとき：連動／コピー／移動を聞く
   function adoptAgain(id, index) {
-    const nums = Store.timelineCards()
-      .map(function (c, i) { return (c.id === id || c.linkOf === id) ? '#' + (i + 1) : null; })
-      .filter(Boolean).join(' ');
+    const nums = (Store.cutNumbers().get(id) || []).map(function (n) { return '#' + n; }).join(' ');
     U.choose('このカードはすでにタイムラインにあります（' + nums + '）',
       '連動：絵と文字は共通で、片方を直すともう片方も変わります（尺は別々）。\nコピー：複製を作って並べます。あとで別々に描き直せます。',
       [
@@ -432,7 +425,7 @@
         U.toast('コピーを並べました（マップにも複製があります）');
       } else if (v === 'move') {
         // 自分を抜いた並びでの位置に直す
-        const list = Store.timelineCards();
+        const list = Store.timelineCards(Store.sceneOf(id));
         const cur = list.findIndex(function (c) { return c.id === id; });
         Store.adopt(id, cur >= 0 && cur < index ? index - 1 : index);
         U.toast('タイムラインの順番を変えました');
@@ -564,6 +557,7 @@
       lastCardTap = null;
       if (!drag.group && multi.length) multi = []; // 選択に入っていないカードをつかんだら複数選択は解除
       selectedId = drag.id;
+      AP.Timeline.setScene(Store.sceneOf(drag.id)); // タイムラインをこのカードのシーンに
     }
     // 吸着中は、つかんだカードの左上がグリッドに乗るようにずらす（子孫も同じだけ動く）
     let mx = dx / view.z, my = dy / view.z;
@@ -671,7 +665,7 @@
       // 選んだ順にタイムラインへ（すでに並んでいるものもこの流れに入れ直す）
       const beforeId = AP.Timeline.beforeIdAt(e.clientX, new Set(ids));
       Store.moveCards(d.origin);
-      Store.adoptMany(ids, beforeId);
+      Store.adoptMany(ids, beforeId, AP.Timeline.scene());
       U.toast(ids.length + '枚を選んだ順にタイムラインへ並べました');
     } else if (d.target) {
       let ng = 0;

@@ -14,6 +14,8 @@
   let durEditId = null;    // 尺を入力中のカード
   let pendingRender = false;
   let lastTap = null;      // ダブルタップ判定
+  let scene = null;        // 表示中のシーン（ツリーのいちばん上のカードのid）
+  let sceneSel;
 
   function pxPerFrame() { return C.TL_PX_PER_SEC * zoom / Store.settings().fps; }
 
@@ -32,10 +34,12 @@
     if (durEditId || (press && press.mode !== 'press')) { pendingRender = true; return; }
     pendingRender = false;
     const fps = Store.settings().fps;
-    const list = Store.timelineCards();
+    if (!scene || !Store.isScene(scene)) scene = Store.scenes()[0] || null;
+    renderSceneSelect();
+    const list = scene ? Store.timelineCards(scene) : [];
     const ppf = pxPerFrame();
     const pad = C.TL_PADDING_PX;
-    const total = Store.totalFrames();
+    const total = scene ? Store.totalFrames(scene) : 0;
     const selected = AP.MapView.selected();
 
     totalEl.textContent = totalLabel(total, fps) + '　' + list.length + 'カット';
@@ -65,7 +69,9 @@
     if (!list.length) {
       const empty = document.createElement('div');
       empty.className = 'tl-empty';
-      empty.textContent = 'マップのカードをここへドラッグすると、タイムラインに採用されます';
+      empty.textContent = scene
+        ? '「' + Store.sceneName(scene) + '」にはまだカットがありません。このシーンのカードをマップからドラッグしてください'
+        : 'マップのカードをここへドラッグすると、タイムラインに採用されます（ツリー1本が1つのシーンになります）';
       track.appendChild(empty);
     }
 
@@ -355,10 +361,17 @@
     document.getElementById('tl-zoom-out').addEventListener('click', function () { setZoom(zoom / C.TL_ZOOM_STEP); });
 
     document.addEventListener('ap:select', function (e) {
+      // 選んだカードのシーンに切り替える
+      if (e.detail.id && Store.get(e.detail.id)) {
+        const sc = Store.sceneOf(e.detail.id);
+        if (sc !== scene) { scene = sc; return render(); }
+      }
       track.querySelectorAll('.tl-card').forEach(function (el) {
         el.classList.toggle('selected', el.dataset.src === e.detail.id);
       });
     });
+    sceneSel = document.getElementById('tl-scene');
+    sceneSel.addEventListener('change', function () { scene = sceneSel.value || null; render(); });
     window.addEventListener('resize', render);
     Store.subscribe(function (reason) {
       if (reason !== 'move') render(); // マップでカードを動かしている間は作り直さない
@@ -366,8 +379,34 @@
     render();
   }
 
+  // シーンの選択肢：カットのあるシーン＋表示中のシーン
+  function renderSceneSelect() {
+    const ids = Store.scenes();
+    if (scene && ids.indexOf(scene) < 0) ids.push(scene);
+    const key = ids.map(function (id) { return id + ':' + Store.sceneName(id); }).join('|') + '#' + scene;
+    if (sceneSel.dataset.key === key) return;
+    sceneSel.dataset.key = key;
+    sceneSel.innerHTML = '';
+    if (!ids.length) {
+      const o = document.createElement('option');
+      o.value = '';
+      o.textContent = '（シーンなし）';
+      sceneSel.appendChild(o);
+    }
+    ids.forEach(function (id, i) {
+      const o = document.createElement('option');
+      o.value = id;
+      const n = Store.timelineCards(id).length;
+      o.textContent = 'シーン' + (i + 1) + '：' + Store.sceneName(id) + '（' + n + 'カット）';
+      sceneSel.appendChild(o);
+    });
+    sceneSel.value = scene || '';
+  }
+
   AP.Timeline = {
     init: init,
+    scene: function () { return scene; },
+    setScene: function (id) { if (id !== scene) { scene = id; render(); } },
     render: render,
     isOver: isOver,
     indexAt: indexAt,

@@ -110,14 +110,15 @@
     cv.width = C.EXPORT_IMAGE_W;
     cv.height = Math.round(C.EXPORT_IMAGE_W / ratio);
     const ctx = cv.getContext('2d');
-    const list = Store.timelineCards();
+    const list = Store.playlist(); // Vコンテのシーン構成の順
     for (let i = 0; i < list.length; i++) {
-      AP.Vconte.renderCut(ctx, cv.width, cv.height, list[i], 0, i, { overlays: false });
+      AP.Vconte.renderCut(ctx, cv.width, cv.height, list[i].card, 0, i, { overlays: false });
       const bytes = await canvasBytes(cv);
-      if (bytes) files.push({ name: 'images/C' + String(i + 1).padStart(3, '0') + '.png', data: bytes });
+      const name = 'S' + String(list[i].sceneNo).padStart(2, '0') + '_C' + String(list[i].cutNo).padStart(3, '0');
+      if (bytes) files.push({ name: 'images/' + name + '.png', data: bytes });
     }
     files.push({ name: 'はじめに読んでください.txt', data:
-      'アニメ・プリプロの作品ファイルです。\r\n' +
+      C.APP_NAME + 'の作品ファイルです。\r\n' +
       'アプリの「📁 プロジェクト」→「ファイルから開く」で、このzipをそのまま選ぶと読み込めます。\r\n' +
       '（解凍しなくて大丈夫です。中の project.json が作品のデータ、images はカットの絵です）\r\n\r\n' +
       '作品名：' + (p.title || '') + '\r\n保存日時：' + new Date().toLocaleString() + '\r\n' });
@@ -160,8 +161,8 @@
       json = new TextDecoder().decode(new Uint8Array(buf));
     }
     let p;
-    try { p = JSON.parse(json); } catch (e) { throw new Error('アニメ・プリプロの作品ファイル（zip／json）ではありません'); }
-    if (!p || !Array.isArray(p.cards)) throw new Error('アニメ・プリプロの作品ファイルではありません');
+    try { p = JSON.parse(json); } catch (e) { throw new Error(C.APP_NAME + 'の作品ファイル（zip／json）ではありません'); }
+    if (!p || !Array.isArray(p.cards)) throw new Error(C.APP_NAME + 'の作品ファイルではありません');
     return p;
   }
 
