@@ -31,7 +31,15 @@
   function applyView() {
     world.style.transform = 'translate(' + view.x + 'px,' + view.y + 'px) scale(' + view.z + ')';
     if (zoomLabel) zoomLabel.textContent = Math.round(view.z * 100) + '%';
+    // 背景の点をワールドのグリッドに合わせる（吸着の目と一致させる）
+    const g = C.GRID_SIZE * view.z;
+    vp.classList.toggle('no-grid', g < C.GRID_MIN_SCREEN_PX);
+    vp.style.backgroundSize = g + 'px ' + g + 'px';
+    vp.style.backgroundPosition = (view.x - g / 2) + 'px ' + (view.y - g / 2) + 'px';
   }
+
+  function snapOn() { return !!Store.settings().mapSnap; }
+  function snap(v) { return Math.round(v / C.GRID_SIZE) * C.GRID_SIZE; }
 
   function clientToWorld(cx, cy) {
     const r = vp.getBoundingClientRect();
@@ -255,9 +263,9 @@
   }
 
   function createAt(worldPt, props) {
-    const card = Store.createCard(Object.assign({
-      mapPos: { x: worldPt.x - C.CARD_W / 2, y: worldPt.y - C.CARD_H_ESTIMATE / 2 },
-    }, props || {}));
+    let x = worldPt.x - C.CARD_W / 2, y = worldPt.y - C.CARD_H_ESTIMATE / 2;
+    if (snapOn()) { x = snap(x); y = snap(y); }
+    const card = Store.createCard(Object.assign({ mapPos: { x: x, y: y } }, props || {}));
     newCardId = card.id;
     select(card.id);
     startEdit(card.id);
@@ -303,6 +311,103 @@
     select(card.id);
     startEdit(card.id);
     return card;
+  }
+
+  // ------------------------------------------------------------
+  // 整列
+  // ------------------------------------------------------------
+  function currentPositions() {
+    const pos = {};
+    Store.activeCards().forEach(function (c) { pos[c.id] = { x: c.mapPos.x, y: c.mapPos.y }; });
+    return pos;
+  }
+
+  function offerUndo(before, msg) {
+    U.toast(msg, {
+      label: '元に戻す',
+      ms: C.ARRANGE_UNDO_MS,
+      fn: function () { Store.moveCards(before); U.toast('整列する前の位置に戻しました'); },
+    });
+  }
+
+  // いちばん上の階層の並び（箇条書きの順）。左上の基準は今いちばん上にあるカード
+  function arrangeOrigin(roots) {
+    const all = Store.activeCards();
+    let x = Infinity, y = Infinity;
+    all.forEach(function (c) { x = Math.min(x, c.mapPos.x); y = Math.min(y, c.mapPos.y); });
+    return { x: snap(isFinite(x) ? x : 0), y: snap(isFinite(y) ? y : 0) };
+  }
+
+  // ツリーに整列：親の右に子、兄弟は縦に。親は子のまとまりの縦の真ん中
+  function arrangeTree() {
+    const roots = Store.treeChildren(null);
+    if (!roots.length) return;
+    const before = currentPositions();
+    const pos = {};
+    const colW = snap(C.CARD_W + C.CHILD_GAP_X);
+    // 枝の高さ
+    const memo = new Map();
+    function heightOf(c) {
+      if (memo.has(c.id)) return memo.get(c.id);
+      const kids = Store.treeChildren(c.id);
+      let kh = 0;
+      kids.forEach(function (k, i) { kh += heightOf(k) + (i ? C.CHILD_GAP_Y : 0); });
+      const h = Math.max(cardH(c.id), kh);
+      memo.set(c.id, h);
+      return h;
+    }
+    function place(c, x, top) {
+      const h = heightOf(c);
+      const kids = Store.treeChildren(c.id);
+      if (!kids.length) {
+        pos[c.id] = { x: x, y: snap(top + (h - cardH(c.id)) / 2) };
+        return;
+      }
+      let kh = 0;
+      kids.forEach(function (k, i) { kh += heightOf(k) + (i ? C.CHILD_GAP_Y : 0); });
+      let y = top + (h - kh) / 2;
+      kids.forEach(function (k) {
+        place(k, x + colW, y);
+        y += heightOf(k) + C.CHILD_GAP_Y;
+      });
+      // 親は最初の子と最後の子のちょうど間
+      const first = pos[kids[0].id].y, last = pos[kids[kids.length - 1].id].y;
+      pos[c.id] = { x: x, y: snap((first + last) / 2) };
+    }
+    const o = arrangeOrigin(roots);
+    let top = o.y;
+    roots.forEach(function (r) {
+      place(r, o.x, top);
+      top = snap(top + heightOf(r) + C.ARRANGE_ROOT_GAP);
+    });
+    Store.moveCards(pos);
+    offerUndo(before, 'ツリーに整列しました');
+  }
+
+  // グリッドに並べる：箇条書きの順に、左上から横に並べて折り返す
+  function arrangeGrid() {
+    const order = [];
+    (function walk(pid) {
+      Store.treeChildren(pid).forEach(function (c) { order.push(c); walk(c.id); });
+    })(null);
+    if (!order.length) return;
+    const before = currentPositions();
+    const cols = C.ARRANGE_GRID_COLS || Math.max(1, Math.ceil(Math.sqrt(order.length * 1.6)));
+    const cellW = snap(C.CARD_W + C.ARRANGE_GRID_GAP);
+    const rowH = snap(Math.max.apply(null, order.map(function (c) { return cardH(c.id); })) + C.ARRANGE_GRID_GAP);
+    const o = arrangeOrigin(order);
+    const pos = {};
+    order.forEach(function (c, i) {
+      pos[c.id] = { x: o.x + (i % cols) * cellW, y: o.y + Math.floor(i / cols) * rowH };
+    });
+    Store.moveCards(pos);
+    offerUndo(before, 'グリッドに並べました（' + cols + '列）');
+  }
+
+  function setSnap(on) {
+    Store.setSetting('mapSnap', !!on);
+    vp.classList.toggle('snap', !!on);
+    U.toast(on ? 'グリッドに吸着します' : 'グリッドへの吸着をやめました');
   }
 
   // (x, y) にカードを置くと重なるなら、空いている所まで下へずらした位置を返す
@@ -366,6 +471,7 @@
       y = Math.max.apply(null, sibs.map(function (s) { return s.mapPos.y + cardH(s.id); })) + C.CHILD_GAP_Y;
     }
     y = freeSpot(x, y, subIds).y; // ほかの枝と重なるなら下へ
+    if (snapOn()) { x = snap(x); y = Math.ceil(y / C.GRID_SIZE) * C.GRID_SIZE; }
     const dx = x - c.mapPos.x;
     const dy = y - c.mapPos.y;
     const pos = {};
@@ -468,9 +574,16 @@
       lastCardTap = null;
       selectedId = drag.id;
     }
+    // 吸着中は、つかんだカードの左上がグリッドに乗るようにずらす（子孫も同じだけ動く）
+    let mx = dx / view.z, my = dy / view.z;
+    if (snapOn()) {
+      const o = drag.origin[drag.id];
+      mx = snap(o.x + mx) - o.x;
+      my = snap(o.y + my) - o.y;
+    }
     const pos = {};
     Object.keys(drag.origin).forEach(function (id) {
-      pos[id] = { x: drag.origin[id].x + dx / view.z, y: drag.origin[id].y + dy / view.z };
+      pos[id] = { x: drag.origin[id].x + mx, y: drag.origin[id].y + my };
     });
     drag.overTray = AP.Tray.isOver(e.clientX, e.clientY);
     drag.overTimeline = !drag.overTray && AP.Timeline.isOver(e.clientX, e.clientY);
@@ -665,9 +778,10 @@
     vp.addEventListener('gestureend', onGestureEnd);
 
     Store.subscribe(function (reason) {
-      if (reason === 'load') { selectedId = null; editingId = null; }
+      if (reason === 'load') { selectedId = null; editingId = null; vp.classList.toggle('snap', snapOn()); }
       render();
     });
+    vp.classList.toggle('snap', snapOn());
     render();
     applyView();
   }
@@ -690,6 +804,10 @@
     cardH: cardH,
     adoptAgain: adoptAgain,
     freeSpot: freeSpot,
+    arrangeTree: arrangeTree,
+    arrangeGrid: arrangeGrid,
+    setSnap: setSnap,
+    snapOn: snapOn,
     // 画面の真ん中のワールド座標（マップが隠れているときは最後に見えていた位置の目安）
     viewCenter: function () {
       const r = vp.getBoundingClientRect();

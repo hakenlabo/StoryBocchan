@@ -43,13 +43,26 @@
   };
 
   let toastTimer = null;
-  U.toast = function (msg) {
+  // action: { label, fn, ms } を渡すと、押せるボタン付きで（ms の間）出す
+  U.toast = function (msg, action) {
     const el = document.getElementById('toast');
     if (!el) return;
     el.textContent = msg;
+    el.classList.toggle('has-action', !!action);
+    if (action) {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'toast-action';
+      b.textContent = action.label;
+      b.addEventListener('click', function () {
+        el.classList.remove('show', 'has-action');
+        action.fn();
+      });
+      el.appendChild(b);
+    }
     el.classList.add('show');
     clearTimeout(toastTimer);
-    toastTimer = setTimeout(function () { el.classList.remove('show'); }, 2200);
+    toastTimer = setTimeout(function () { el.classList.remove('show', 'has-action'); }, action && action.ms ? action.ms : 2200);
   };
 
   // 選択肢つきの確認。choices: [{label, value, primary?}]。選んだ value（やめたら null）を返す Promise

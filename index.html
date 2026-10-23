@@ -37,6 +37,14 @@
     <span id="zoom-label" class="zoom-label">100%</span>
     <button id="btn-zoom-in" type="button" title="拡大">＋</button>
     <button id="btn-fit" type="button" title="全体を表示（⌘/Ctrl+0）">全体表示</button>
+    <span class="arrange-wrap">
+      <button id="btn-arrange" type="button" title="カードを自動で並べる・グリッドに吸着">⊞ 整列 ▾</button>
+      <div id="arrange-menu" class="arrange-menu" hidden>
+        <button type="button" data-arrange="tree">⇶ ツリーに整列<small>親の右に子を並べる（マインドマップ風）</small></button>
+        <button type="button" data-arrange="grid">▦ グリッドに並べる<small>箇条書きの順にタイル状に</small></button>
+        <label class="arrange-snap"><input id="snap-toggle" type="checkbox"> グリッドに吸着<small>動かしたカードを目に合わせる</small></label>
+      </div>
+    </span>
     <span class="hint">空白をダブルクリック・⌘+Enterでカード ／ 絵の部分をダブルクリックで描く ／ 重ねると子に ／ 線をクリックで切り離し</span>
   </div>
 

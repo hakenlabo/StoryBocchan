@@ -32,7 +32,8 @@
   }
 
   function defaultSettings() {
-    return { fps: C.DEFAULT_FPS, aspect: C.DEFAULT_ASPECT, vcShowCutNo: C.VC_SHOW_CUT_NO, vcShowText: C.VC_SHOW_TEXT };
+    return { fps: C.DEFAULT_FPS, aspect: C.DEFAULT_ASPECT, vcShowCutNo: C.VC_SHOW_CUT_NO, vcShowText: C.VC_SHOW_TEXT,
+      mapSnap: C.GRID_DEFAULT_SNAP };
   }
 
   function newProject() {

@@ -118,8 +118,8 @@ button:disabled { opacity: .4; cursor: default; }
   -webkit-user-select: none;
   -webkit-touch-callout: none;
   background-color: var(--bg);
-  background-image: radial-gradient(var(--grid) 1px, transparent 1px);
-  background-size: 24px 24px;
+  background-image: radial-gradient(circle, var(--grid) 1px, transparent 1.5px);
+  background-size: 20px 20px;
   cursor: default;
 }
 .map-world {
@@ -670,3 +670,40 @@ body[data-view="outline"] .toolbar > :not(#btn-copy):not(#btn-paste) { visibilit
   #btn-save { font-size: 0; padding: 4px 8px; }
   #btn-save::before { content: "💾 保存"; font-size: 14px; }
 }
+
+/* ---- グリッド・整列 ---- */
+.map-viewport.no-grid { background-image: none; }
+.map-viewport.snap { background-image: radial-gradient(circle, #b9c0ca 1.2px, transparent 1.7px); }
+.map-viewport.snap.no-grid { background-image: none; }
+.arrange-wrap { position: relative; }
+.arrange-menu {
+  position: fixed;
+  z-index: 60;
+  margin-top: 4px;
+  min-width: 260px;
+  padding: 6px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  box-shadow: 0 8px 24px rgba(0,0,0,.15);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  white-space: normal;
+}
+.arrange-menu[hidden] { display: none; }
+.arrange-menu button, .arrange-snap {
+  display: block;
+  text-align: left;
+  border: none;
+  border-radius: 6px;
+  padding: 8px 10px;
+  background: transparent;
+  cursor: pointer;
+  font-size: 14px;
+}
+.arrange-menu button:hover, .arrange-snap:hover { background: #f1f3f6; }
+.arrange-menu small { display: block; font-size: 11px; color: var(--sub); margin-top: 2px; }
+.arrange-snap { border-top: 1px solid #eceef1; border-radius: 0 0 6px 6px; }
+.toast.has-action { pointer-events: auto; display: flex; align-items: center; gap: 12px; }
+.toast-action { background: #fff; color: var(--ink); border: none; border-radius: 12px; padding: 3px 12px; font-size: 13px; font-weight: 700; }

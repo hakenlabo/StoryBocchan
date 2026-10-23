@@ -23,6 +23,15 @@ AP.CONFIG = {
   CHILD_GAP_Y: 20,                // 自動配置：兄弟同士の縦の間隔
   REMOVE_EMPTY_NEW_CARD: true,    // 作った直後に何も書かずに確定したカードは消す（誤ダブルタップ対策）
 
+  // ---- グリッド・整列 ----
+  GRID_SIZE: 20,               // グリッドの目の大きさ（ワールドpx）。吸着もこの単位
+  GRID_DEFAULT_SNAP: false,    // 新しいプロジェクトで最初から吸着するか
+  GRID_MIN_SCREEN_PX: 8,       // 縮小して目がこれより細かくなったら背景の点を消す
+  ARRANGE_ROOT_GAP: 60,        // ツリー整列：いちばん上の階層どうしの縦の間隔（兄弟・親子の間隔は CHILD_GAP_X/Y）
+  ARRANGE_GRID_COLS: 0,        // グリッドに並べる：列の数（0なら枚数に合わせて自動）
+  ARRANGE_GRID_GAP: 40,        // グリッドに並べる：カードの間隔
+  ARRANGE_UNDO_MS: 8000,       // 整列のあと「元に戻す」を押せる時間
+
   // ---- 親子線 ----
   LINE_STYLE: 'curve',         // 'curve' | 'straight'
   LINE_HIT_WIDTH: 16,          // 線をクリックしやすくする当たり判定の太さ

@@ -69,6 +69,24 @@
     btnCopy.addEventListener('click', function () { AP.Clipboard.copyButton(); });
     document.getElementById('btn-paste').addEventListener('click', function () { AP.Clipboard.pasteButton(); });
     document.getElementById('btn-fit').addEventListener('click', function () { MapView.fit(); });
+    // 整列メニュー
+    const menu = document.getElementById('arrange-menu');
+    const snapBox = document.getElementById('snap-toggle');
+    document.getElementById('btn-arrange').addEventListener('click', function () {
+      snapBox.checked = MapView.snapOn();
+      menu.hidden = !menu.hidden;
+    });
+    menu.querySelectorAll('[data-arrange]').forEach(function (b) {
+      b.addEventListener('click', function () {
+        menu.hidden = true;
+        if (b.dataset.arrange === 'tree') MapView.arrangeTree(); else MapView.arrangeGrid();
+        MapView.fit();
+      });
+    });
+    snapBox.addEventListener('change', function () { MapView.setSnap(snapBox.checked); });
+    document.addEventListener('pointerdown', function (e) {
+      if (!menu.hidden && !e.target.closest('.arrange-wrap')) menu.hidden = true;
+    });
     document.getElementById('btn-zoom-in').addEventListener('click', function () { MapView.zoomBy(1.25); });
     document.getElementById('btn-zoom-out').addEventListener('click', function () { MapView.zoomBy(0.8); });
 
