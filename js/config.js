@@ -28,8 +28,6 @@ AP.CONFIG = {
   GRID_DEFAULT_SNAP: false,    // 新しいプロジェクトで最初から吸着するか
   GRID_MIN_SCREEN_PX: 8,       // 縮小して目がこれより細かくなったら背景の点を消す
   ARRANGE_ROOT_GAP: 60,        // ツリー整列：いちばん上の階層どうしの縦の間隔（兄弟・親子の間隔は CHILD_GAP_X/Y）
-  ARRANGE_GRID_COLS: 0,        // グリッドに並べる：列の数（0なら枚数に合わせて自動）
-  ARRANGE_GRID_GAP: 40,        // グリッドに並べる：カードの間隔
   ARRANGE_UNDO_MS: 8000,       // 整列のあと「元に戻す」を押せる時間
 
   // ---- 親子線 ----
@@ -100,6 +98,11 @@ AP.CONFIG = {
   CAM_FADE_SECS: [0.25, 0.5, 1, 1.5, 2, 3], // FI／FO の長さ（秒）の選択肢
   CAM_DEFAULT_AMOUNT_INDEX: 1,
   CAM_PREVIEW_W: 360,                 // 設定パネルのプレビューの幅
+
+  // ---- 取り消し（Undo／Redo） ----
+  UNDO_LIMIT: 200,             // さかのぼれる回数
+  UNDO_GROUP_MS: 600,          // この時間内に続いた同じ種類の変更（ドラッグ・文字入力）は1回にまとめる
+  UNDO_SAME_ACTION_MS: 50,     // これより短い間に続いた変更は、種類が違っても1つの操作とみなす（貼り付けなど）
 
   // ---- 保存 ----
   EXPORT_IMAGE_W: 960,         // 「ファイルに保存」でzipに入れる各カットの絵の幅（px）

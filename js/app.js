@@ -40,21 +40,24 @@
     aspect.addEventListener('change', function () { Store.setSetting('aspect', aspect.value); });
 
     // 別のプロジェクトに切り替えたら、見出しと今の画面を作り直す
-    document.addEventListener('ap:projectloaded', function () {
-      title.value = Store.project().title;
-      fps.value = String(Store.settings().fps);
-      aspect.value = String(Store.settings().aspect);
-      document.title = Store.project().title + ' - アニメ・プリプロ';
-      MapView.fit();
-      const v = document.body.dataset.view;
-      if (v === 'vconte') AP.Vconte.show();
-      else if (v === 'outline') AP.Outline.show();
-      else AP.Timeline.render();
-    });
+    document.addEventListener('ap:projectloaded', function () { refreshHeaderAndView(true); });
     document.title = Store.project().title + ' - アニメ・プリプロ';
     Store.subscribe(function (reason) {
       if (reason === 'title') document.title = Store.project().title + ' - アニメ・プリプロ';
     });
+  }
+
+  // 見出し（作品名・fps・画面比）と今の画面を作り直す。fit＝マップを全体表示にする
+  function refreshHeaderAndView(fit) {
+    document.getElementById('project-title').value = Store.project().title;
+    document.getElementById('setting-fps').value = String(Store.settings().fps);
+    document.getElementById('setting-aspect').value = String(Store.settings().aspect);
+    document.title = Store.project().title + ' - アニメ・プリプロ';
+    if (fit) MapView.fit();
+    const v = document.body.dataset.view;
+    if (v === 'vconte') AP.Vconte.show();
+    else if (v === 'outline') AP.Outline.show();
+    else AP.Timeline.render();
   }
 
   function setupToolbar() {
@@ -79,7 +82,7 @@
     menu.querySelectorAll('[data-arrange]').forEach(function (b) {
       b.addEventListener('click', function () {
         menu.hidden = true;
-        if (b.dataset.arrange === 'tree') MapView.arrangeTree(); else MapView.arrangeGrid();
+        MapView.arrangeTree();
         MapView.fit();
       });
     });
@@ -116,10 +119,35 @@
     });
   }
 
+  function undo() {
+    if (!Store.undo()) U.toast('これ以上取り消せません');
+  }
+  function redo() {
+    if (!Store.redo()) U.toast('やり直せる操作がありません');
+  }
+
+  function setupUndo() {
+    const bu = document.getElementById('btn-undo');
+    const br = document.getElementById('btn-redo');
+    bu.addEventListener('click', undo);
+    br.addEventListener('click', redo);
+    const update = function () { bu.disabled = !Store.canUndo(); br.disabled = !Store.canRedo(); };
+    Store.subscribe(function (reason) {
+      update();
+      if (reason === 'history') refreshHeaderAndView(false);
+    });
+    update();
+  }
+
   function setupKeys() {
     document.addEventListener('keydown', function (e) {
       const tag = (e.target.tagName || '').toLowerCase();
       if (tag === 'input' || tag === 'textarea' || tag === 'select' || MapView.isEditing() || AP.Draw.isOpen() || AP.Camera.isOpen() || AP.Project.isOpen()) return;
+      if (document.querySelector('.dialog-back:not([hidden])')) return;
+      // 取り消し・やり直し（どの画面でも）
+      const mod = e.metaKey || e.ctrlKey;
+      if (mod && !e.altKey && e.key.toLowerCase() === 'z') { e.preventDefault(); e.shiftKey ? redo() : undo(); return; }
+      if (mod && !e.altKey && e.key.toLowerCase() === 'y') { e.preventDefault(); redo(); return; }
       if (document.body.dataset.view === 'vconte') return AP.Vconte.onKey(e);
       if (document.body.dataset.view === 'outline') return;
       const sel = MapView.selected();
@@ -165,6 +193,7 @@
     AP.Project.init();
     setupHeader();
     setupTabs();
+    setupUndo();
     setupToolbar();
     setupKeys();
     MapView.fit();

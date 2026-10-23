@@ -707,3 +707,7 @@ body[data-view="outline"] .toolbar > :not(#btn-copy):not(#btn-paste) { visibilit
 .arrange-snap { border-top: 1px solid #eceef1; border-radius: 0 0 6px 6px; }
 .toast.has-action { pointer-events: auto; display: flex; align-items: center; gap: 12px; }
 .toast-action { background: #fff; color: var(--ink); border: none; border-radius: 12px; padding: 3px 12px; font-size: 13px; font-weight: 700; }
+
+/* ---- 取り消し・やり直し ---- */
+.undo-group { display: flex; gap: 2px; }
+.undo-group button { min-width: 34px; font-size: 16px; padding: 2px 8px; }

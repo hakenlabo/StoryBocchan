@@ -87,7 +87,76 @@
 
   function emit(reason) {
     if (reason !== 'load') project.updatedAt = Date.now();
+    record(reason);
     listeners.forEach(function (fn) { fn(reason); });
+  }
+
+  // ------------------------------------------------------------
+  // 取り消し（Undo／Redo）
+  // 変更のたびに状態の写しを取る。カードは浅い写し（strokes などの中身は差し替えでしか変わらないので共有して軽くする）。
+  // 続けて起きた変更（ドラッグ中の移動、文字入力、貼り付けでまとめて起きる変更）は1回の操作にまとめる。
+  // ------------------------------------------------------------
+  let undoStack = [];
+  let redoStack = [];
+  let base = null;          // いまの操作が始まる前の状態
+  let latest = null;        // 最後の変更のあとの状態
+  let pending = false;      // まとめている途中の操作がある
+  let pendingGroup = null;
+  let lastEmitAt = 0;
+  let applying = false;
+  let mergeNext = false;    // 次の変更は今の操作に含める
+
+  function snap() {
+    return {
+      title: project.title,
+      settings: Object.assign({}, project.settings),
+      cards: project.cards.map(function (c) { return Object.assign({}, c); }),
+    };
+  }
+
+  function groupOf(reason) {
+    if (reason === 'move') return 'move';
+    if (reason === 'update' || reason === 'title') return 'text';
+    if (reason === 'duration') return 'duration';
+    return reason + ':' + Math.random(); // それ以外は毎回べつの操作
+  }
+
+  function closeGroup() {
+    if (!pending) return;
+    undoStack.push(base);
+    if (undoStack.length > C.UNDO_LIMIT) undoStack.shift();
+    base = latest;
+    pending = false;
+  }
+
+  function record(reason) {
+    if (applying || reason === 'load' || reason === 'history') return;
+    const now = Date.now();
+    const g = groupOf(reason);
+    const gap = now - lastEmitAt;
+    if (pending && !mergeNext && gap > C.UNDO_SAME_ACTION_MS && (g !== pendingGroup || gap > C.UNDO_GROUP_MS)) closeGroup();
+    mergeNext = false;
+    pending = true;
+    pendingGroup = g;
+    lastEmitAt = now;
+    latest = snap();
+    redoStack = [];
+  }
+
+  function resetHistory() {
+    undoStack = [];
+    redoStack = [];
+    base = latest = snap();
+    pending = false;
+  }
+
+  function apply(state) {
+    project.title = state.title;
+    project.settings = Object.assign({}, state.settings);
+    project.cards = state.cards.map(function (c) { return Object.assign({}, c); });
+    reindex();
+    applying = true;
+    try { emit('history'); } finally { applying = false; }
   }
 
   const S = {};
@@ -110,7 +179,33 @@
   S.load = function (p) {
     project = normalize(p);
     reindex();
+    resetHistory();
     emit('load');
+  };
+
+  // ここで操作の区切りをつける（整列など、前後の変更とまとめたくない操作の前に呼ぶ）
+  S.checkpoint = function () { closeGroup(); lastEmitAt = 0; };
+  // 次の変更を、直前の操作と1回にまとめる（カードを作ってすぐ最初の文字を入れたとき）
+  S.mergeNext = function () { mergeNext = true; };
+  S.canUndo = function () { return pending || undoStack.length > 0; };
+  S.canRedo = function () { return redoStack.length > 0; };
+
+  S.undo = function () {
+    closeGroup();
+    if (!undoStack.length) return false;
+    redoStack.push(base);
+    base = latest = undoStack.pop();
+    apply(base);
+    return true;
+  };
+
+  S.redo = function () {
+    if (!redoStack.length) return false;
+    closeGroup();
+    undoStack.push(base);
+    base = latest = redoStack.pop();
+    apply(base);
+    return true;
   };
 
   S.setTitle = function (title) { project.title = title; emit('title'); };

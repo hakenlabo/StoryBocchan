@@ -12,6 +12,10 @@
     <button id="btn-project" type="button" title="新しいプロジェクト・ほかのプロジェクトを開く・ファイルから開く">📁 プロジェクト</button>
     <input id="project-title" class="project-title" type="text" aria-label="作品名">
     <button id="btn-save" type="button" title="作品をファイル（zip）に保存。バックアップや別の端末へ（⌘/Ctrl+S）">💾 保存</button>
+    <span class="undo-group">
+      <button id="btn-undo" type="button" title="取り消し（⌘/Ctrl+Z）" disabled>↶</button>
+      <button id="btn-redo" type="button" title="やり直し（⌘/Ctrl+Shift+Z）" disabled>↷</button>
+    </span>
     <nav class="view-tabs">
       <button class="tab" type="button" data-view="outline" title="箇条書きでどんどんアイデアを出す（マップと連動）">箇条書き</button>
       <button class="tab active" type="button" data-view="map" title="マップと、下にタイムライン">マップ</button>
@@ -41,7 +45,6 @@
       <button id="btn-arrange" type="button" title="カードを自動で並べる・グリッドに吸着">⊞ 整列 ▾</button>
       <div id="arrange-menu" class="arrange-menu" hidden>
         <button type="button" data-arrange="tree">⇶ ツリーに整列<small>親の右に子を並べる（マインドマップ風）</small></button>
-        <button type="button" data-arrange="grid">▦ グリッドに並べる<small>箇条書きの順にタイル状に</small></button>
         <label class="arrange-snap"><input id="snap-toggle" type="checkbox"> グリッドに吸着<small>動かしたカードを目に合わせる</small></label>
       </div>
     </span>

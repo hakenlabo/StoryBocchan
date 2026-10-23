@@ -249,8 +249,10 @@
     const text = ta ? ta.value.replace(/^\s+|\s+$/g, '') : null;
     if (el) el.classList.remove('editing');
     if (ta) ta.remove();
-    if (!cancel && text !== null) Store.updateCard(id, { text: text });
-    else render();
+    if (!cancel && text !== null) {
+      if (newCardId === id) Store.mergeNext(); // 作ったカードに最初の文字を入れるまでで1回の操作
+      Store.updateCard(id, { text: text });
+    } else render();
 
     if (newCardId === id) {
       newCardId = null;
@@ -316,17 +318,11 @@
   // ------------------------------------------------------------
   // 整列
   // ------------------------------------------------------------
-  function currentPositions() {
-    const pos = {};
-    Store.activeCards().forEach(function (c) { pos[c.id] = { x: c.mapPos.x, y: c.mapPos.y }; });
-    return pos;
-  }
-
-  function offerUndo(before, msg) {
+  function offerUndo(msg) {
     U.toast(msg, {
       label: '元に戻す',
       ms: C.ARRANGE_UNDO_MS,
-      fn: function () { Store.moveCards(before); U.toast('整列する前の位置に戻しました'); },
+      fn: function () { if (Store.undo()) U.toast('整列する前の位置に戻しました'); },
     });
   }
 
@@ -342,7 +338,7 @@
   function arrangeTree() {
     const roots = Store.treeChildren(null);
     if (!roots.length) return;
-    const before = currentPositions();
+    Store.checkpoint(); // 整列だけで1回の取り消しになるように
     const pos = {};
     const colW = snap(C.CARD_W + C.CHILD_GAP_X);
     // 枝の高さ
@@ -381,27 +377,8 @@
       top = snap(top + heightOf(r) + C.ARRANGE_ROOT_GAP);
     });
     Store.moveCards(pos);
-    offerUndo(before, 'ツリーに整列しました');
-  }
-
-  // グリッドに並べる：箇条書きの順に、左上から横に並べて折り返す
-  function arrangeGrid() {
-    const order = [];
-    (function walk(pid) {
-      Store.treeChildren(pid).forEach(function (c) { order.push(c); walk(c.id); });
-    })(null);
-    if (!order.length) return;
-    const before = currentPositions();
-    const cols = C.ARRANGE_GRID_COLS || Math.max(1, Math.ceil(Math.sqrt(order.length * 1.6)));
-    const cellW = snap(C.CARD_W + C.ARRANGE_GRID_GAP);
-    const rowH = snap(Math.max.apply(null, order.map(function (c) { return cardH(c.id); })) + C.ARRANGE_GRID_GAP);
-    const o = arrangeOrigin(order);
-    const pos = {};
-    order.forEach(function (c, i) {
-      pos[c.id] = { x: o.x + (i % cols) * cellW, y: o.y + Math.floor(i / cols) * rowH };
-    });
-    Store.moveCards(pos);
-    offerUndo(before, 'グリッドに並べました（' + cols + '列）');
+    Store.checkpoint();
+    offerUndo('ツリーに整列しました（⌘Zでも戻せます）');
   }
 
   function setSnap(on) {
@@ -779,6 +756,15 @@
 
     Store.subscribe(function (reason) {
       if (reason === 'load') { selectedId = null; editingId = null; vp.classList.toggle('snap', snapOn()); }
+      if (reason === 'history') {
+        // 取り消しで選択中のカードがなくなったら選択を外す
+        const sel = selectedId && Store.get(selectedId);
+        if (selectedId && (!sel || sel.status !== 'active')) {
+          selectedId = null;
+          document.dispatchEvent(new CustomEvent('ap:select', { detail: { id: null } }));
+        }
+        vp.classList.toggle('snap', snapOn());
+      }
       render();
     });
     vp.classList.toggle('snap', snapOn());
@@ -805,7 +791,6 @@
     adoptAgain: adoptAgain,
     freeSpot: freeSpot,
     arrangeTree: arrangeTree,
-    arrangeGrid: arrangeGrid,
     setSnap: setSnap,
     snapOn: snapOn,
     // 画面の真ん中のワールド座標（マップが隠れているときは最後に見えていた位置の目安）
