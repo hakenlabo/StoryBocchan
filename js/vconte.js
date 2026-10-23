@@ -50,9 +50,9 @@
     const i = cutIndexAt(f);
     if (i < 0) return;
     const cut = cuts[i];
-    const card = cut.card;
+    const card = Store.source(cut.card); // 連動カットは元のカードの絵と文字
 
-    const key = card.id + '|' + W + 'x' + H;
+    const key = cut.card.id + '|' + W + 'x' + H;
     if (layerKey !== key || layer._strokes !== card.strokes) {
       layer.width = W;
       layer.height = H;
@@ -67,7 +67,7 @@
     c2d.font = 'bold ' + fs + 'px -apple-system, "Hiragino Sans", "Yu Gothic UI", Meiryo, sans-serif';
     c2d.textBaseline = 'middle';
     if (st.vcShowCutNo) {
-      const label = 'C' + (i + 1) + '  ' + U.framesToLabel(f - cut.start, st.fps) + ' / ' + U.framesToLabel(card.duration, st.fps);
+      const label = 'C' + (i + 1) + '  ' + U.framesToLabel(f - cut.start, st.fps) + ' / ' + U.framesToLabel(cut.card.duration, st.fps);
       const pad = fs * 0.4;
       const w = c2d.measureText(label).width + pad * 2;
       c2d.fillStyle = 'rgba(0,0,0,.55)';
@@ -114,7 +114,7 @@
       const s = document.createElement('div');
       s.className = 'vc-seg';
       s.style.flexGrow = cut.card.duration;
-      s.title = '#' + (i + 1) + ' ' + (cut.card.text || '（無題）');
+      s.title = '#' + (i + 1) + ' ' + (Store.source(cut.card).text || '（無題）');
       s.textContent = i + 1;
       segsEl.appendChild(s);
     });
@@ -129,7 +129,7 @@
     timeEl.textContent = U.framesToLabel(frame, fps) + ' / ' + U.framesToLabel(total, fps) +
       '　（' + (total ? frame + 1 : 0) + ' / ' + total + 'コマ）';
     const i = cutIndexAt(frame);
-    cutEl.textContent = i >= 0 ? '#' + (i + 1) + '  ' + (cuts[i].card.text || '（無題）') : '';
+    cutEl.textContent = i >= 0 ? '#' + (i + 1) + '  ' + (Store.source(cuts[i].card).text || '（無題）') : '';
     segsEl.querySelectorAll('.vc-seg').forEach(function (el, k) { el.classList.toggle('current', k === i); });
     playBtn.textContent = playing ? '❚❚ 一時停止' : '▶ 再生';
   }

@@ -97,7 +97,11 @@
     const fps = Store.settings().fps;
     const seen = new Set();
     const tlIndex = new Map();
-    Store.timelineCards().forEach(function (c, i) { tlIndex.set(c.id, i); });
+    Store.timelineCards().forEach(function (c, i) {
+      const id = c.linkOf || c.id; // 連動カットは元のカードに番号を足す
+      if (!tlIndex.has(id)) tlIndex.set(id, []);
+      tlIndex.get(id).push(i);
+    });
 
     active.forEach(function (c) {
       let el = els.get(c.id);
@@ -124,7 +128,9 @@
       const badge = el.querySelector('.card-badge');
       const ti = tlIndex.get(c.id);
       el.classList.toggle('adopted', ti !== undefined);
-      badge.textContent = ti !== undefined ? '#' + (ti + 1) + '  ' + U.framesToLabel(c.duration, fps) : '';
+      badge.textContent = !ti ? '' : ti.length === 1
+        ? '#' + (ti[0] + 1) + '  ' + U.framesToLabel(c.duration, fps)
+        : ti.map(function (i) { return '#' + (i + 1); }).join(' ');
       if (c.id !== editingId) {
         const t = el.querySelector('.card-text');
         t.textContent = c.text;
@@ -289,10 +295,61 @@
     } else {
       card = Store.createCard({ mapPos: { x: base.mapPos.x, y: base.mapPos.y + cardH(base.id) + C.CHILD_GAP_Y } });
     }
+    // 箇条書きの並びでも、基準のカードのすぐ後ろに入れる
+    const treeParent = Store.treeParentId(base);
+    const sibs = Store.treeChildren(treeParent);
+    Store.moveInTree(card.id, treeParent, sibs.findIndex(function (c) { return c.id === base.id; }) + 1);
     newCardId = card.id;
     select(card.id);
     startEdit(card.id);
     return card;
+  }
+
+  // (x, y) にカードを置くと重なるなら、空いている所まで下へずらした位置を返す
+  function freeSpot(x, y, exceptIds) {
+    const w = C.CARD_W, h = C.CARD_H_ESTIMATE, gap = C.CHILD_GAP_Y;
+    const boxes = Store.activeCards()
+      .filter(function (c) { return !(exceptIds && exceptIds.has(c.id)); })
+      .map(function (c) { return { x: c.mapPos.x, y: c.mapPos.y, h: cardH(c.id) }; });
+    for (let i = 0; i < 200; i++) {
+      const hit = boxes.find(function (b) {
+        return x < b.x + w + gap && x + w + gap > b.x && y < b.y + b.h + gap && y + h + gap > b.y;
+      });
+      if (!hit) break;
+      y = hit.y + hit.h + gap;
+    }
+    return { x: x, y: y };
+  }
+
+  // すでにタイムラインにあるカードをもう一度置いたとき：連動／コピー／移動を聞く
+  function adoptAgain(id, index) {
+    const nums = Store.timelineCards()
+      .map(function (c, i) { return (c.id === id || c.linkOf === id) ? '#' + (i + 1) : null; })
+      .filter(Boolean).join(' ');
+    U.choose('このカードはすでにタイムラインにあります（' + nums + '）',
+      '連動：絵と文字は共通で、片方を直すともう片方も変わります（尺は別々）。\nコピー：複製を作って並べます。あとで別々に描き直せます。',
+      [
+        { label: '連動して並べる', value: 'link', primary: true },
+        { label: 'コピーして並べる', value: 'copy' },
+        { label: 'ここへ移動', value: 'move' },
+      ]).then(function (v) {
+      if (v === 'link') {
+        Store.addLink(id, index);
+        U.toast('連動カットを並べました');
+      } else if (v === 'copy') {
+        const src = Store.get(id);
+        const copy = Store.duplicate(id);
+        Store.moveCards({ [copy.id]: freeSpot(src.mapPos.x, src.mapPos.y + cardH(src.id) + C.CHILD_GAP_Y, new Set([copy.id])) });
+        Store.adopt(copy.id, index);
+        U.toast('コピーを並べました（マップにも複製があります）');
+      } else if (v === 'move') {
+        // 自分を抜いた並びでの位置に直す
+        const list = Store.timelineCards();
+        const cur = list.findIndex(function (c) { return c.id === id; });
+        Store.adopt(id, cur >= 0 && cur < index ? index - 1 : index);
+        U.toast('タイムラインの順番を変えました');
+      }
+    });
   }
 
   // 子（とその子孫）を親の右側、兄弟の下に並べる
@@ -308,6 +365,7 @@
     if (sibs.length) {
       y = Math.max.apply(null, sibs.map(function (s) { return s.mapPos.y + cardH(s.id); })) + C.CHILD_GAP_Y;
     }
+    y = freeSpot(x, y, subIds).y; // ほかの枝と重なるなら下へ
     const dx = x - c.mapPos.x;
     const dy = y - c.mapPos.y;
     const pos = {};
@@ -459,10 +517,14 @@
       peel(d.id);
     } else if (d.overTimeline) {
       // 採用：カードはマップにも残る（同じカードを別のビューで見ているだけ）
-      const wasAdopted = Store.get(d.id).timelineOrder !== null;
+      const index = AP.Timeline.indexAt(e.clientX, d.id);
       Store.moveCards(d.origin);
-      Store.adopt(d.id, AP.Timeline.indexAt(e.clientX, d.id));
-      U.toast(wasAdopted ? 'タイムラインの順番を変えました' : 'タイムラインに採用しました');
+      if (Store.get(d.id).timelineOrder === null) {
+        Store.adopt(d.id, index);
+        U.toast('タイムラインに採用しました');
+      } else {
+        adoptAgain(d.id, AP.Timeline.indexAt(e.clientX, null));
+      }
     } else if (d.target) {
       if (!attachTo(d.id, d.target)) Store.moveCards(d.origin); // 付けられないときは元の位置へ
     } else {
@@ -624,6 +686,16 @@
     addNextCard: addNextCard,
     peel: peel,
     attachTo: attachTo,
+    autoPlace: autoPlace,
+    cardH: cardH,
+    adoptAgain: adoptAgain,
+    freeSpot: freeSpot,
+    // 画面の真ん中のワールド座標（マップが隠れているときは最後に見えていた位置の目安）
+    viewCenter: function () {
+      const r = vp.getBoundingClientRect();
+      if (!r.width) return { x: (-view.x + 400) / view.z, y: (-view.y + 300) / view.z };
+      return clientToWorld(r.left + r.width / 2, r.top + r.height / 2);
+    },
     cardAtClient: cardAtClient,
     clientToWorld: clientToWorld,
     isOverMap: isOverMap,

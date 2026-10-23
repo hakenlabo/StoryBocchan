@@ -11,6 +11,7 @@
     <div class="brand">アニメ・プリプロ</div>
     <input id="project-title" class="project-title" type="text" aria-label="作品名">
     <nav class="view-tabs">
+      <button class="tab" type="button" data-view="outline" title="箇条書きでどんどんアイデアを出す（マップと連動）">箇条書き</button>
       <button class="tab active" type="button" data-view="map" title="マップと、下にタイムライン">マップ</button>
       <button class="tab" type="button" data-view="timeline" title="タイムラインを大きく表示">タイムライン</button>
       <button class="tab" type="button" data-view="vconte" title="タイムラインどおりに再生">Vコンテ</button>
@@ -27,6 +28,8 @@
     <button id="btn-add-child" type="button" title="選択中のカードに子カードを足す（Tab）">＋ 子カード</button>
     <button id="btn-draw" type="button" title="選択中のカードに絵を描く（カードの絵の部分をダブルクリックでも開けます）">✎ 描く</button>
     <button id="btn-peel" type="button" title="選択中のカードを保留トレイへ（Delete）">剥がす</button>
+    <button id="btn-copy" type="button" title="選択中のカードを子カードごとコピー（⌘/Ctrl+C）">コピー</button>
+    <button id="btn-paste" type="button" title="選択中のカードの子として貼り付け（⌘/Ctrl+V）。外の箇条書きは1行1カードに">貼り付け</button>
     <span class="sep"></span>
     <button id="btn-zoom-out" type="button" title="縮小">－</button>
     <span id="zoom-label" class="zoom-label">100%</span>
@@ -69,6 +72,21 @@
       <div id="tl-scroll" class="tl-scroll"><div id="tl-track" class="tl-track"></div></div>
     </section>
 
+    <section id="outline" class="outline">
+      <div class="ol-bar">
+        <span class="ol-title">箇条書き</span>
+        <span class="ol-hint">1行＝1枚のカード。Enter 次の行 ／ Tab 字下げ（子カード） ／ Shift+Tab 字上げ ／ ⌥↑↓ 並べ替え ／ 空の行で Backspace 消す</span>
+        <span class="ol-buttons">
+          <button type="button" data-ol="outdent" title="字上げ（Shift+Tab）">← 字上げ</button>
+          <button type="button" data-ol="indent" title="字下げ（Tab）">字下げ →</button>
+          <button type="button" data-ol="up" title="上へ（⌥↑）">↑</button>
+          <button type="button" data-ol="down" title="下へ（⌥↓）">↓</button>
+          <button type="button" data-ol="peel" title="保留トレイへ">剥がす</button>
+        </span>
+      </div>
+      <div class="ol-scroll"><div id="ol-list" class="ol-list"></div></div>
+    </section>
+
     <section id="vconte" class="vconte">
       <div id="vc-stage" class="vc-stage">
         <canvas id="vc-canvas"></canvas>
@@ -107,6 +125,8 @@
       <button id="draw-undo" type="button" title="取り消し（⌘/Ctrl+Z）">↶ 取り消し</button>
       <button id="draw-redo" type="button" title="やり直し（⌘/Ctrl+Shift+Z）">↷ やり直し</button>
       <button id="draw-clear" type="button">全部消す</button>
+      <button id="draw-copy" type="button" title="この絵をコピー（⌘/Ctrl+C）">絵をコピー</button>
+      <button id="draw-paste" type="button" title="コピーした絵を重ねる（⌘/Ctrl+V）">絵を貼り付け</button>
       <button id="draw-close" class="primary" type="button" title="閉じる（Esc）">完了</button>
     </div>
     <div id="draw-stage" class="draw-stage"><canvas id="draw-canvas"></canvas></div>
@@ -124,6 +144,8 @@
   <script src="js/timeline.js"></script>
   <script src="js/draw.js"></script>
   <script src="js/vconte.js"></script>
+  <script src="js/clipboard.js"></script>
+  <script src="js/outline.js"></script>
   <script src="js/app.js"></script>
 </body>
 </html>

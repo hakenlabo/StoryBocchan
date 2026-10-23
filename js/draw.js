@@ -82,7 +82,8 @@
   // パネル
   // ------------------------------------------------------------
   let panel, stage, canvas, ctx, titleEl, prevBtn, nextBtn, undoBtn, redoBtn;
-  let cardId = null;
+  let cardId = null;        // 開いているカット（連動カットならそのid。前後移動の基準）
+  let drawId = null;        // 絵を書き込むカード（連動カットなら元のカード）
   let strokes = [];         // 編集中の線（確定のたびに新しい配列にして保存）
   let undoStack = [];
   let redoStack = [];
@@ -100,12 +101,13 @@
     if (!card) return;
     if (AP.MapView.isEditing()) AP.MapView.finishEdit();
     cardId = id;
-    strokes = card.strokes || [];
+    drawId = Store.source(card).id;
+    strokes = Store.get(drawId).strokes || [];
     undoStack = [];
     redoStack = [];
     panel.hidden = false;
     document.body.classList.add('drawing');
-    AP.MapView.select(id);
+    AP.MapView.select(drawId);
     updateTitle();
     layout();
     updateButtons();
@@ -123,7 +125,7 @@
     const card = Store.get(cardId);
     const list = Store.timelineCards();
     const i = list.findIndex(function (c) { return c.id === cardId; });
-    titleEl.textContent = (i >= 0 ? '#' + (i + 1) + '  ' : '') + (card.text || '（無題）');
+    titleEl.textContent = (i >= 0 ? '#' + (i + 1) + '  ' : '') + (card.linkOf ? '🔗 ' : '') + (Store.source(card).text || '（無題）');
     prevBtn.disabled = !(i > 0);
     nextBtn.disabled = !(i >= 0 && i < list.length - 1);
     prevBtn.title = nextBtn.title = i >= 0 ? 'タイムラインの前後のカードへ' : 'タイムラインに採用すると前後に移動できます';
@@ -172,7 +174,7 @@
     if (undoStack.length > C.DRAW_UNDO_LIMIT) undoStack.shift();
     redoStack = [];
     strokes = next;
-    Store.setStrokes(cardId, strokes);
+    Store.setStrokes(drawId, strokes);
     updateButtons();
   }
 
@@ -180,7 +182,7 @@
     if (!undoStack.length) return;
     redoStack.push(strokes);
     strokes = undoStack.pop();
-    Store.setStrokes(cardId, strokes);
+    Store.setStrokes(drawId, strokes);
     redraw();
     updateButtons();
   }
@@ -189,7 +191,7 @@
     if (!redoStack.length) return;
     undoStack.push(strokes);
     strokes = redoStack.pop();
-    Store.setStrokes(cardId, strokes);
+    Store.setStrokes(drawId, strokes);
     redraw();
     updateButtons();
   }
@@ -333,6 +335,8 @@
     undoBtn.addEventListener('click', undo);
     redoBtn.addEventListener('click', redo);
     document.getElementById('draw-clear').addEventListener('click', clearAll);
+    document.getElementById('draw-copy').addEventListener('click', function () { AP.Clipboard.copyButton(); });
+    document.getElementById('draw-paste').addEventListener('click', function () { AP.Clipboard.pasteButton(); });
     document.getElementById('draw-close').addEventListener('click', close);
     prevBtn.addEventListener('click', function () { go(-1); });
     nextBtn.addEventListener('click', function () { go(1); });
@@ -348,6 +352,13 @@
 
   AP.Draw = {
     init: init,
+    currentStrokes: function () { return cardId ? strokes : []; },
+    // ほかのカードからコピーした絵を重ねる（取り消し可）
+    pasteStrokes: function (list) {
+      if (!cardId) return;
+      commit(strokes.concat(JSON.parse(JSON.stringify(list))));
+      redraw();
+    },
     open: open,
     close: close,
     isOpen: isOpen,

@@ -52,5 +52,50 @@
     toastTimer = setTimeout(function () { el.classList.remove('show'); }, 2200);
   };
 
+  // 選択肢つきの確認。choices: [{label, value, primary?}]。選んだ value（やめたら null）を返す Promise
+  U.choose = function (title, message, choices) {
+    return new Promise(function (resolve) {
+      const back = document.createElement('div');
+      back.className = 'dialog-back';
+      const box = document.createElement('div');
+      box.className = 'dialog';
+      box.setAttribute('role', 'dialog');
+      const h = document.createElement('div');
+      h.className = 'dialog-title';
+      h.textContent = title;
+      const m = document.createElement('div');
+      m.className = 'dialog-msg';
+      m.textContent = message;
+      const btns = document.createElement('div');
+      btns.className = 'dialog-buttons';
+      const done = function (v) {
+        document.removeEventListener('keydown', onKey, true);
+        back.remove();
+        resolve(v);
+      };
+      const onKey = function (e) {
+        if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); done(null); }
+      };
+      choices.concat([{ label: 'やめる', value: null }]).forEach(function (c) {
+        const b = document.createElement('button');
+        b.type = 'button';
+        b.textContent = c.label;
+        if (c.primary) b.className = 'primary';
+        if (c.value !== null && c.value !== undefined) b.dataset.value = c.value;
+        b.addEventListener('click', function () { done(c.value === undefined ? null : c.value); });
+        btns.appendChild(b);
+      });
+      box.appendChild(h);
+      box.appendChild(m);
+      box.appendChild(btns);
+      back.appendChild(box);
+      back.addEventListener('pointerdown', function (e) { if (e.target === back) done(null); });
+      document.addEventListener('keydown', onKey, true);
+      document.body.appendChild(back);
+      const first = btns.querySelector('.primary') || btns.firstChild;
+      if (first) first.focus();
+    });
+  };
+
   AP.util = U;
 })();

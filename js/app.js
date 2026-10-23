@@ -48,6 +48,9 @@
     document.getElementById('btn-add').addEventListener('click', function () { MapView.createAtCenter(); });
     btnChild.addEventListener('click', function () { MapView.addChildOfSelected(); });
     btnPeel.addEventListener('click', function () { MapView.peel(MapView.selected()); });
+    const btnCopy = document.getElementById('btn-copy');
+    btnCopy.addEventListener('click', function () { AP.Clipboard.copyButton(); });
+    document.getElementById('btn-paste').addEventListener('click', function () { AP.Clipboard.pasteButton(); });
     document.getElementById('btn-fit').addEventListener('click', function () { MapView.fit(); });
     document.getElementById('btn-zoom-in').addEventListener('click', function () { MapView.zoomBy(1.25); });
     document.getElementById('btn-zoom-out').addEventListener('click', function () { MapView.zoomBy(0.8); });
@@ -56,6 +59,7 @@
       const has = !!MapView.selected();
       btnChild.disabled = !has;
       btnDraw.disabled = !has;
+      btnCopy.disabled = !has;
       btnPeel.disabled = !has;
     };
     document.addEventListener('ap:select', update);
@@ -71,6 +75,7 @@
         document.body.dataset.view = v;
         document.querySelectorAll('.view-tabs .tab').forEach(function (b) { b.classList.toggle('active', b === btn); });
         if (v === 'vconte') AP.Vconte.show();
+        else if (v === 'outline') AP.Outline.show();
         else AP.Timeline.render();
       });
     });
@@ -81,6 +86,7 @@
       const tag = (e.target.tagName || '').toLowerCase();
       if (tag === 'input' || tag === 'textarea' || tag === 'select' || MapView.isEditing() || AP.Draw.isOpen()) return;
       if (document.body.dataset.view === 'vconte') return AP.Vconte.onKey(e);
+      if (document.body.dataset.view === 'outline') return;
       const sel = MapView.selected();
       if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
         e.preventDefault(); MapView.addNextCard();
@@ -119,6 +125,8 @@
     AP.Timeline.init();
     AP.Draw.init();
     AP.Vconte.init();
+    AP.Clipboard.init();
+    AP.Outline.init();
     setupHeader();
     setupTabs();
     setupToolbar();

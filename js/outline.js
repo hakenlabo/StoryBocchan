@@ -1,0 +1,367 @@
+/*
+ * AP.Outline：箇条書きモード。マップと同じカードを、1行＝1カードの箇条書きで見る。
+ * - 字下げ＝親子（parentId）、行の順番＝treeOrder。マップの座標とは別に持つ。
+ * - Enter 次の行、Tab 字下げ、Shift+Tab 字上げ、空の行で Backspace 消す、⌥↑↓ 並べ替え。
+ * - 入力中は行を作り直さない（作り直すとカーソルが飛ぶため）。構造が変わったときだけ全体を作り直し、フォーカスを戻す。
+ */
+(function () {
+  const C = AP.CONFIG;
+  const U = AP.util;
+  const Store = AP.Store;
+  const NEW_ROW = '__new';
+
+  let section, list;
+  let selfUpdate = false;   // 自分の入力による更新では作り直さない
+  let rebuilding = false;   // 作り直し中の blur は無視
+  let focusAfter = null;    // 次に作り直したときにフォーカスする { id, caret }
+  let lastFocusedId = null;
+  const newIds = new Set(); // ここで作った行（空のまま離れたら消す）
+
+  function isVisible() { return document.body.dataset.view === 'outline'; }
+
+  function rows() {
+    const out = [];
+    (function walk(parentId, depth) {
+      Store.treeChildren(parentId).forEach(function (c) {
+        out.push({ card: c, depth: depth });
+        walk(c.id, depth + 1);
+      });
+    })(null, 0);
+    return out;
+  }
+
+  // ------------------------------------------------------------
+  // 描画
+  // ------------------------------------------------------------
+  function grow(ta) {
+    ta.style.height = 'auto';
+    ta.style.height = ta.scrollHeight + 'px';
+  }
+
+  function rowEl(r, tl) {
+    const c = r.card;
+    const el = document.createElement('div');
+    el.className = 'ol-row';
+    el.dataset.id = c.id;
+    el.style.setProperty('--depth', r.depth);
+    const meta = [];
+    if (tl.has(c.id)) meta.push(tl.get(c.id).map(function (i) { return '#' + (i + 1); }).join(' '));
+    if (c.strokes.length) meta.push('✎');
+    el.innerHTML =
+      '<span class="ol-bullet" title="マップで選択"></span>' +
+      '<textarea class="ol-text" rows="1" placeholder="（空の行）"></textarea>' +
+      '<span class="ol-meta"></span>';
+    el.querySelector('.ol-text').value = c.text;
+    el.querySelector('.ol-meta').textContent = meta.join('  ');
+    return el;
+  }
+
+  function newRowEl() {
+    const el = document.createElement('div');
+    el.className = 'ol-row ol-new';
+    el.dataset.id = NEW_ROW;
+    el.style.setProperty('--depth', 0);
+    el.innerHTML =
+      '<span class="ol-bullet"></span>' +
+      '<textarea class="ol-text" rows="1" placeholder="ここに書いて Enter。どんどん書き出そう（Tabで字下げ）"></textarea>';
+    return el;
+  }
+
+  function render() {
+    if (!isVisible()) return;
+    let keep = focusAfter;
+    focusAfter = null;
+    const a = document.activeElement;
+    if (!keep && a && a.classList && a.classList.contains('ol-text')) {
+      keep = { id: a.closest('.ol-row').dataset.id, caret: a.selectionStart };
+    }
+    const tl = new Map();
+    Store.timelineCards().forEach(function (c, i) {
+      const id = c.linkOf || c.id;
+      if (!tl.has(id)) tl.set(id, []);
+      tl.get(id).push(i);
+    });
+    rebuilding = true;
+    list.innerHTML = '';
+    rows().forEach(function (r) { list.appendChild(rowEl(r, tl)); });
+    list.appendChild(newRowEl());
+    list.querySelectorAll('.ol-text').forEach(grow);
+    rebuilding = false;
+    if (keep) focusRow(keep.id, keep.caret);
+  }
+
+  function focusRow(id, caret) {
+    const row = list.querySelector('.ol-row[data-id="' + id + '"]');
+    if (!row) return;
+    const ta = row.querySelector('.ol-text');
+    ta.focus();
+    const pos = caret === undefined || caret === null ? ta.value.length : Math.min(caret, ta.value.length);
+    ta.setSelectionRange(pos, pos);
+  }
+
+  // ------------------------------------------------------------
+  // 構造の操作
+  // ------------------------------------------------------------
+  function context(id) {
+    const card = Store.get(id);
+    const parentId = Store.treeParentId(card);
+    const sibs = Store.treeChildren(parentId);
+    return { card: card, parentId: parentId, sibs: sibs, idx: sibs.findIndex(function (c) { return c.id === id; }) };
+  }
+
+  // マップ上の置き場所：親がいれば親の右、いなければいちばん下
+  function placeOnMap(id, parentId) {
+    if (parentId) return AP.MapView.autoPlace(id, parentId);
+    let x = null, y = -Infinity;
+    Store.activeCards().forEach(function (c) {
+      if (c.id === id) return;
+      if (!Store.treeParentId(c) && x === null) x = c.mapPos.x;
+      y = Math.max(y, c.mapPos.y + AP.MapView.cardH(c.id));
+    });
+    Store.moveCards({ [id]: { x: x === null ? 0 : x, y: y === -Infinity ? 0 : y + C.CHILD_GAP_Y } });
+  }
+
+  function addRow(parentId, index, text, caret) {
+    const card = Store.createCard({ text: text || '', parentId: parentId });
+    placeOnMap(card.id, parentId);
+    newIds.add(card.id);
+    focusAfter = { id: card.id, caret: caret || 0 };
+    Store.moveInTree(card.id, parentId, index); // ← ここで作り直してフォーカス
+    return card;
+  }
+
+  function indent(id) {
+    const x = context(id);
+    if (x.idx <= 0) return U.toast('上に同じ階層の行がないので字下げできません');
+    const newParent = x.sibs[x.idx - 1];
+    focusAfter = { id: id, caret: caretOf(id) };
+    Store.moveInTree(id, newParent.id, Store.treeChildren(newParent.id).length);
+    AP.MapView.autoPlace(id, newParent.id);
+  }
+
+  function outdent(id) {
+    const x = context(id);
+    if (!x.parentId) return;
+    const parent = Store.get(x.parentId);
+    const grand = Store.treeParentId(parent);
+    const pIdx = Store.treeChildren(grand).findIndex(function (c) { return c.id === parent.id; });
+    focusAfter = { id: id, caret: caretOf(id) };
+    Store.moveInTree(id, grand, pIdx + 1);
+    if (grand) AP.MapView.autoPlace(id, grand);
+  }
+
+  function move(id, delta) {
+    const x = context(id);
+    const to = x.idx + delta;
+    if (to < 0 || to >= x.sibs.length) return;
+    focusAfter = { id: id, caret: caretOf(id) };
+    Store.moveInTree(id, x.parentId, to);
+  }
+
+  function removable(c) {
+    return !c.text && !c.strokes.length && !Store.children(c.id).length && c.timelineOrder === null &&
+      !Store.cards().some(function (l) { return l.linkOf === c.id; });
+  }
+
+  function caretOf(id) {
+    const ta = list.querySelector('.ol-row[data-id="' + id + '"] .ol-text');
+    return ta ? ta.selectionStart : 0;
+  }
+
+  function visibleIds() {
+    return Array.prototype.map.call(list.querySelectorAll('.ol-row'), function (r) { return r.dataset.id; });
+  }
+
+  function focusNeighbor(id, delta) {
+    const ids = visibleIds();
+    const i = ids.indexOf(id) + delta;
+    if (i >= 0 && i < ids.length) focusRow(ids[i], delta < 0 ? null : 0);
+  }
+
+  // ------------------------------------------------------------
+  // 入力
+  // ------------------------------------------------------------
+  function onKeyDown(e) {
+    const ta = e.target;
+    if (!ta.classList.contains('ol-text')) return;
+    e.stopPropagation();
+    if (e.isComposing || e.keyCode === 229) return; // 日本語変換中
+    const id = ta.closest('.ol-row').dataset.id;
+
+    if (id === NEW_ROW) {
+      if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        const text = ta.value.trim();
+        if (!text) return;
+        const card = Store.createCard({ text: text });
+        placeOnMap(card.id, null);
+        focusAfter = { id: NEW_ROW, caret: 0 };
+        Store.moveInTree(card.id, null, Store.treeChildren(null).length);
+      } else if (e.key === 'Tab') {
+        e.preventDefault();
+      } else if (e.key === 'ArrowUp' && ta.selectionStart === 0) {
+        e.preventDefault();
+        focusNeighbor(id, -1);
+      }
+      return;
+    }
+
+    const x = context(id);
+    const firstLine = ta.value.lastIndexOf('\n', ta.selectionStart - 1) === -1;
+    const lastLine = ta.value.indexOf('\n', ta.selectionEnd) === -1;
+
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      // 空の行で Enter：字上げ（よくある箇条書きの動き）
+      if (!ta.value.trim() && x.parentId) return outdent(id);
+      const before = ta.value.slice(0, ta.selectionStart);
+      const after = ta.value.slice(ta.selectionEnd);
+      if (!before && after) {
+        // 行頭で Enter：上に空の行
+        addRow(x.parentId, x.idx, '', 0);
+        return;
+      }
+      // カーソルの後ろの文字は次の行へ
+      if (after) {
+        selfUpdate = true;
+        Store.updateCard(id, { text: before });
+        selfUpdate = false;
+      }
+      addRow(x.parentId, x.idx + 1, after, 0);
+    } else if (e.key === 'Tab') {
+      e.preventDefault();
+      e.shiftKey ? outdent(id) : indent(id);
+    } else if (e.key === 'Backspace' && !ta.value && ta.selectionStart === 0) {
+      e.preventDefault();
+      if (!removable(x.card)) return U.toast('子の行や絵があるので消せません（剥がすならマップで）');
+      const ids = visibleIds();
+      const prev = ids[ids.indexOf(id) - 1];
+      newIds.delete(id);
+      focusAfter = prev ? { id: prev, caret: null } : { id: NEW_ROW, caret: 0 };
+      Store.removeCard(id);
+    } else if (e.key === 'ArrowUp' && e.altKey) {
+      e.preventDefault(); move(id, -1);
+    } else if (e.key === 'ArrowDown' && e.altKey) {
+      e.preventDefault(); move(id, 1);
+    } else if (e.key === 'ArrowUp' && firstLine) {
+      e.preventDefault(); focusNeighbor(id, -1);
+    } else if (e.key === 'ArrowDown' && lastLine) {
+      e.preventDefault(); focusNeighbor(id, 1);
+    }
+  }
+
+  function onInput(e) {
+    const ta = e.target;
+    if (!ta.classList.contains('ol-text')) return;
+    grow(ta);
+    const id = ta.closest('.ol-row').dataset.id;
+    if (id === NEW_ROW) return;
+    selfUpdate = true;
+    Store.updateCard(id, { text: ta.value });
+    selfUpdate = false;
+  }
+
+  function onFocusIn(e) {
+    const row = e.target.closest && e.target.closest('.ol-row');
+    if (!row) return;
+    lastFocusedId = row.dataset.id;
+    if (row.dataset.id !== NEW_ROW && AP.MapView.selected() !== row.dataset.id) AP.MapView.select(row.dataset.id);
+  }
+
+  function onFocusOut(e) {
+    if (rebuilding) return;
+    const row = e.target.closest && e.target.closest('.ol-row');
+    if (!row) return;
+    const id = row.dataset.id;
+    if (id === NEW_ROW) {
+      // 書きかけのまま離れたら、その文字もカードにする
+      const text = e.target.value.trim();
+      if (text) {
+        const card = Store.createCard({ text: text });
+        placeOnMap(card.id, null);
+        Store.moveInTree(card.id, null, Store.treeChildren(null).length);
+      }
+      return;
+    }
+    if (!newIds.has(id)) return;
+    newIds.delete(id);
+    const c = Store.get(id);
+    if (C.REMOVE_EMPTY_NEW_CARD && c && removable(c)) {
+      setTimeout(function () { if (Store.get(id) && removable(Store.get(id))) Store.removeCard(id); }, 0);
+    }
+  }
+
+  // 複数行の貼り付け：1行＝1行（字下げも読む）として、今の行の後ろに入れる
+  function onPaste(e) {
+    const ta = e.target;
+    if (!ta.classList || !ta.classList.contains('ol-text')) return;
+    const text = e.clipboardData ? e.clipboardData.getData('text/plain') : '';
+    if (text.indexOf('\n') === -1) return; // 1行ならふつうに貼る
+    e.preventDefault();
+    const lines = AP.Clipboard.parseLines(text);
+    if (!lines.length) return;
+    const id = ta.closest('.ol-row').dataset.id;
+    let parentId = null, index = Store.treeChildren(null).length, emptyId = null;
+    if (id !== NEW_ROW) {
+      const x = context(id);
+      parentId = x.parentId;
+      index = x.idx + 1;
+      if (!ta.value && removable(x.card)) emptyId = id;
+    }
+    const created = AP.Clipboard.importLines(lines, { parentId: parentId, index: index });
+    if (emptyId) Store.removeCard(emptyId);
+    if (created.length) {
+      focusAfter = { id: created[created.length - 1].id, caret: null };
+      render();
+      U.toast(created.length + '行を貼り付けました');
+    }
+  }
+
+  // iPad向けのボタン。押してもフォーカスを奪わない
+  function setupButtons() {
+    section.querySelectorAll('[data-ol]').forEach(function (b) {
+      b.addEventListener('pointerdown', function (e) { e.preventDefault(); });
+      b.addEventListener('click', function () {
+        const id = lastFocusedId;
+        if (!id || id === NEW_ROW || !Store.get(id)) return U.toast('先に行をタップしてください');
+        const act = b.dataset.ol;
+        if (act === 'indent') indent(id);
+        else if (act === 'outdent') outdent(id);
+        else if (act === 'up') move(id, -1);
+        else if (act === 'down') move(id, 1);
+        else if (act === 'peel') {
+          const ids = visibleIds();
+          const next = ids[ids.indexOf(id) + 1];
+          focusAfter = next ? { id: next, caret: 0 } : null;
+          AP.MapView.peel(id);
+        }
+      });
+    });
+  }
+
+  function show() {
+    render();
+    if (!list.querySelector('.ol-row:not(.ol-new)')) focusRow(NEW_ROW, 0);
+  }
+
+  function init() {
+    section = document.getElementById('outline');
+    list = document.getElementById('ol-list');
+    list.addEventListener('keydown', onKeyDown);
+    list.addEventListener('input', onInput);
+    list.addEventListener('focusin', onFocusIn);
+    list.addEventListener('focusout', onFocusOut);
+    list.addEventListener('paste', onPaste);
+    list.addEventListener('click', function (e) {
+      const b = e.target.closest('.ol-bullet');
+      if (b) focusRow(b.closest('.ol-row').dataset.id);
+    });
+    setupButtons();
+    Store.subscribe(function (reason) {
+      if (!isVisible() || selfUpdate || reason === 'move') return;
+      render();
+    });
+  }
+
+  AP.Outline = { init: init, show: show, render: render };
+})();

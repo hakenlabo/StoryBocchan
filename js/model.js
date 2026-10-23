@@ -24,6 +24,8 @@
       status: 'active',
       note: '',
       trayInfo: null,
+      treeOrder: null,   // マップのツリー上の兄弟の順番（箇条書きの並び）。座標とは別に持つ
+      linkOf: null,      // 連動カット：絵と文字はこのidのカードのものを使う（尺と順番だけ自分で持つ）
     }, props || {});
   }
 
@@ -56,6 +58,21 @@
       card.mapPos = Object.assign({ x: 0, y: 0 }, c.mapPos || {});
       return card;
     });
+    // treeOrder がない古いデータは、マップの上から順に番号を振る
+    const groups = new Map();
+    p.cards.forEach(function (c) {
+      if (c.linkOf) return;
+      const k = c.parentId || '';
+      if (!groups.has(k)) groups.set(k, []);
+      groups.get(k).push(c);
+    });
+    groups.forEach(function (list) {
+      if (list.every(function (c) { return c.treeOrder !== null; })) return;
+      list.sort(function (a, b) {
+        if (a.treeOrder !== null && b.treeOrder !== null) return a.treeOrder - b.treeOrder;
+        return (a.mapPos.y - b.mapPos.y) || (a.mapPos.x - b.mapPos.x);
+      }).forEach(function (c, i) { c.treeOrder = i; });
+    });
     return p;
   }
 
@@ -77,7 +94,14 @@
   S.settings = function () { return project.settings; };
   S.cards = function () { return project.cards; };
   S.get = function (id) { return byId.get(id) || null; };
-  S.activeCards = function () { return project.cards.filter(function (c) { return c.status === 'active'; }); };
+  // マップに出るカード（連動カットはタイムラインだけの存在なので含めない）
+  S.activeCards = function () { return project.cards.filter(function (c) { return c.status === 'active' && !c.linkOf; }); };
+
+  // 絵と文字の持ち主（連動カットなら元のカード）
+  S.source = function (card) {
+    if (card && card.linkOf) return byId.get(card.linkOf) || card;
+    return card;
+  };
 
   S.load = function (p) {
     project = normalize(p);
@@ -90,6 +114,7 @@
 
   S.createCard = function (props) {
     const card = makeCard(props);
+    if (card.treeOrder === null && !card.linkOf) card.treeOrder = nextTreeOrder(card.parentId);
     project.cards.push(card);
     byId.set(card.id, card);
     emit('create');
@@ -98,7 +123,7 @@
 
   // 本当に消す。作った直後の空カードの後始末にだけ使う（ユーザー操作の「剥がす」は peel）
   S.removeCard = function (id) {
-    project.cards = project.cards.filter(function (c) { return c.id !== id; });
+    project.cards = project.cards.filter(function (c) { return c.id !== id && c.linkOf !== id; });
     project.cards.forEach(function (c) { if (c.parentId === id) c.parentId = null; });
     reindex();
     emit('remove');
@@ -159,8 +184,63 @@
     if (parentId && S.isAncestorOrSelf(childId, parentId)) return false;
     const c = byId.get(childId);
     if (!c) return false;
-    c.parentId = parentId || null;
+    if ((c.parentId || null) !== (parentId || null)) {
+      c.parentId = parentId || null;
+      c.treeOrder = nextTreeOrder(c.parentId, c.id);
+    }
     emit('parent');
+    return true;
+  };
+
+  // ---- ツリーの順番（箇条書き） ----
+  function nextTreeOrder(parentId, exceptId) {
+    let max = -1;
+    project.cards.forEach(function (c) {
+      if ((c.parentId || null) === (parentId || null) && c.id !== exceptId && !c.linkOf && c.treeOrder !== null) {
+        max = Math.max(max, c.treeOrder);
+      }
+    });
+    return max + 1;
+  }
+
+  function normalizeTree(parentId) {
+    project.cards
+      .filter(function (c) { return (c.parentId || null) === (parentId || null) && !c.linkOf; })
+      .sort(function (a, b) { return a.treeOrder - b.treeOrder; })
+      .forEach(function (c, i) { c.treeOrder = i; });
+  }
+
+  // 表示上の親（親がいない・マップにいないなら null＝いちばん上の階層）
+  S.treeParentId = function (card) {
+    const p = card.parentId ? byId.get(card.parentId) : null;
+    return p && p.status === 'active' && !p.linkOf ? p.id : null;
+  };
+
+  // マップに出ている子を順番どおりに（parentId が null ならいちばん上の階層）
+  S.treeChildren = function (parentId) {
+    return S.activeCards()
+      .filter(function (c) { return S.treeParentId(c) === (parentId || null); })
+      .sort(function (a, b) { return a.treeOrder - b.treeOrder; });
+  };
+
+  // 親を parentId にして、兄弟の index 番目に入れる。輪になる場合は false
+  S.moveInTree = function (id, parentId, index) {
+    if (parentId && S.isAncestorOrSelf(id, parentId)) return false;
+    const c = byId.get(id);
+    if (!c) return false;
+    const oldParent = c.parentId || null;
+    const sibs = S.treeChildren(parentId).filter(function (s) { return s.id !== id; });
+    index = U.clamp(index, 0, sibs.length);
+    const prev = sibs[index - 1];
+    const next = sibs[index];
+    c.parentId = parentId || null;
+    if (prev && next) c.treeOrder = (prev.treeOrder + next.treeOrder) / 2;
+    else if (prev) c.treeOrder = prev.treeOrder + 0.5;
+    else if (next) c.treeOrder = next.treeOrder - 0.5;
+    else c.treeOrder = 0;
+    normalizeTree(c.parentId);
+    if (oldParent !== c.parentId) normalizeTree(oldParent);
+    emit('tree');
     return true;
   };
 
@@ -223,7 +303,12 @@
   // タイムラインに並ぶカード（activeで採用済み）を順番どおりに
   S.timelineCards = function () {
     return project.cards
-      .filter(function (c) { return c.status === 'active' && c.timelineOrder !== null; })
+      .filter(function (c) {
+        if (c.status !== 'active' || c.timelineOrder === null) return false;
+        if (!c.linkOf) return true;
+        const src = byId.get(c.linkOf);
+        return !!src && src.status === 'active'; // 元のカードを剥がしている間は連動カットも隠す
+      })
       .sort(function (a, b) { return a.timelineOrder - b.timelineOrder; });
   };
 
@@ -254,9 +339,41 @@
   S.unadopt = function (id) {
     const card = byId.get(id);
     if (!card) return;
+    if (card.linkOf) return S.removeCard(id); // 連動カットは中身を持たないので、外したら消える
     card.timelineOrder = null;
     normalizeOrders();
     emit('timeline');
+  };
+
+  // 連動カットを作ってタイムラインの index 番目に入れる
+  S.addLink = function (srcId, index) {
+    const src = byId.get(srcId);
+    if (!src) return null;
+    const link = makeCard({ linkOf: src.id, duration: src.duration, mapPos: { x: src.mapPos.x, y: src.mapPos.y } });
+    project.cards.push(link);
+    byId.set(link.id, link);
+    S.adopt(link.id, index);
+    return link;
+  };
+
+  // 中身を複製した独立のカード（子孫は含まない）。元のカードの兄弟として、すぐ後ろに入る
+  S.duplicate = function (srcId, props) {
+    const src = S.source(byId.get(srcId));
+    if (!src) return null;
+    const copy = makeCard(Object.assign({
+      text: src.text,
+      strokes: JSON.parse(JSON.stringify(src.strokes)),
+      duration: src.duration,
+      note: src.note,
+      parentId: src.parentId,
+      mapPos: { x: src.mapPos.x, y: src.mapPos.y },
+      treeOrder: src.treeOrder + 0.5,
+    }, props || {}));
+    project.cards.push(copy);
+    byId.set(copy.id, copy);
+    normalizeTree(copy.parentId);
+    emit('create');
+    return copy;
   };
 
   S.setDuration = function (id, frames) {

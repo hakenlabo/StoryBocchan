@@ -72,8 +72,10 @@
     let start = 0;
     list.forEach(function (c, i) {
       const el = document.createElement('div');
-      el.className = 'tl-card' + (c.id === selected ? ' selected' : '');
+      const src = Store.source(c);
+      el.className = 'tl-card' + (src.id === selected ? ' selected' : '') + (c.linkOf ? ' linked' : '');
       el.dataset.id = c.id;
+      el.dataset.src = src.id;
       el.style.left = (pad + start * ppf) + 'px';
       el.style.width = Math.max(C.TL_MIN_CARD_PX, c.duration * ppf) + 'px';
       el.innerHTML =
@@ -82,8 +84,9 @@
         '<div class="tl-dur" title="タップして尺を入力（秒+コマ）">' + U.framesToLabel(c.duration, fps) + '</div>' +
         '<div class="tl-remove" title="タイムラインから外す（カードは消えません）">×</div>' +
         '<div class="tl-resize" title="ドラッグで尺を変える"></div>';
-      el.querySelector('.tl-text').textContent = c.text || '（無題）';
-      const url = AP.Draw.thumbURL(c.strokes, Store.settings().aspect);
+      el.querySelector('.tl-text').textContent = (c.linkOf ? '🔗 ' : '') + (src.text || '（無題）');
+      if (c.linkOf) el.title = '連動カット：絵と文字は元のカードと共通です';
+      const url = AP.Draw.thumbURL(src.strokes, Store.settings().aspect);
       if (url) el.querySelector('.tl-thumb').style.backgroundImage = 'url(' + url + ')';
       track.appendChild(el);
       start += c.duration;
@@ -283,7 +286,7 @@
         Store.unadopt(p.id);
         U.toast('タイムラインから外しました（カードはマップに残っています）');
       } else if (p.target.closest('.tl-dur')) {
-        AP.MapView.select(p.id);
+        AP.MapView.select(Store.source(Store.get(p.id)).id);
         startDurEdit(p.id);
       } else {
         // ダブルタップで描画パネル
@@ -293,7 +296,7 @@
           AP.Draw.open(p.id);
         } else {
           lastTap = { id: p.id, t: now };
-          AP.MapView.select(p.id);
+          AP.MapView.select(Store.source(Store.get(p.id)).id);
         }
       }
       return;
@@ -340,7 +343,7 @@
 
     document.addEventListener('ap:select', function (e) {
       track.querySelectorAll('.tl-card').forEach(function (el) {
-        el.classList.toggle('selected', el.dataset.id === e.detail.id);
+        el.classList.toggle('selected', el.dataset.src === e.detail.id);
       });
     });
     window.addEventListener('resize', render);
