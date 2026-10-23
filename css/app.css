@@ -1,6 +1,7 @@
 :root {
   --bg: #eef0f3;
-  --grid: #dfe2e7;
+  --grid: rgba(0, 0, 0, .05);   /* マップの背景の点（グレイ5％） */
+  --grid-snap: rgba(0, 0, 0, .09); /* 吸着中の点 */
   --panel: #ffffff;
   --ink: #23262b;
   --sub: #6b7280;
@@ -674,7 +675,7 @@ body[data-view="outline"] .toolbar > * { visibility: hidden; }
 
 /* ---- グリッド・整列 ---- */
 .map-viewport.no-grid { background-image: none; }
-.map-viewport.snap { background-image: radial-gradient(circle, #b9c0ca 1.2px, transparent 1.7px); }
+.map-viewport.snap { background-image: radial-gradient(circle, var(--grid-snap) 1.2px, transparent 1.7px); }
 .map-viewport.snap.no-grid { background-image: none; }
 .arrange-wrap { position: relative; }
 .arrange-menu {

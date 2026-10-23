@@ -345,15 +345,18 @@
     if (!roots.length) return;
     Store.checkpoint(); // 整列だけで1回の取り消しになるように
     const pos = {};
-    const colW = snap(C.CARD_W + C.CHILD_GAP_X);
+    const G = C.GRID_SIZE;
+    const colW = Math.ceil((C.CARD_W + C.ARRANGE_GAP_X) / G) * G;
+    // カードの高さはグリッドの目に切り上げる（間隔が詰まっても丸めで重ならないように）
+    const hOf = function (id) { return Math.ceil(cardH(id) / G) * G; };
     // 枝の高さ
     const memo = new Map();
     function heightOf(c) {
       if (memo.has(c.id)) return memo.get(c.id);
       const kids = Store.treeChildren(c.id);
       let kh = 0;
-      kids.forEach(function (k, i) { kh += heightOf(k) + (i ? C.CHILD_GAP_Y : 0); });
-      const h = Math.max(cardH(c.id), kh);
+      kids.forEach(function (k, i) { kh += heightOf(k) + (i ? C.ARRANGE_GAP_Y : 0); });
+      const h = Math.max(hOf(c.id), kh);
       memo.set(c.id, h);
       return h;
     }
@@ -361,15 +364,15 @@
       const h = heightOf(c);
       const kids = Store.treeChildren(c.id);
       if (!kids.length) {
-        pos[c.id] = { x: x, y: snap(top + (h - cardH(c.id)) / 2) };
+        pos[c.id] = { x: x, y: snap(top + (h - hOf(c.id)) / 2) };
         return;
       }
       let kh = 0;
-      kids.forEach(function (k, i) { kh += heightOf(k) + (i ? C.CHILD_GAP_Y : 0); });
+      kids.forEach(function (k, i) { kh += heightOf(k) + (i ? C.ARRANGE_GAP_Y : 0); });
       let y = top + (h - kh) / 2;
       kids.forEach(function (k) {
         place(k, x + colW, y);
-        y += heightOf(k) + C.CHILD_GAP_Y;
+        y += heightOf(k) + C.ARRANGE_GAP_Y;
       });
       // 親は最初の子と最後の子のちょうど間
       const first = pos[kids[0].id].y, last = pos[kids[kids.length - 1].id].y;

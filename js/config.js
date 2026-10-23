@@ -29,7 +29,9 @@ AP.CONFIG = {
   GRID_SIZE: 20,               // グリッドの目の大きさ（ワールドpx）。吸着もこの単位
   GRID_DEFAULT_SNAP: false,    // 新しいプロジェクトで最初から吸着するか
   GRID_MIN_SCREEN_PX: 8,       // 縮小して目がこれより細かくなったら背景の点を消す
-  ARRANGE_ROOT_GAP: 60,        // ツリー整列：いちばん上の階層どうしの縦の間隔（兄弟・親子の間隔は CHILD_GAP_X/Y）
+  ARRANGE_GAP_X: 20,           // ツリー整列：親と子の横の間隔（グリッド1つ分。場所を取らないように）
+  ARRANGE_GAP_Y: 20,           // ツリー整列：兄弟の縦の間隔
+  ARRANGE_ROOT_GAP: 20,        // ツリー整列：いちばん上の階層（シーン）どうしの縦の間隔
   ARRANGE_UNDO_MS: 8000,       // 整列のあと「元に戻す」を押せる時間
 
   // ---- 親子線 ----
