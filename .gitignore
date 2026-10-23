@@ -1,0 +1,6 @@
+# 作品の書き出しファイルはリポジトリに入れない
+*.zip
+!samples/*.zip
+exports/
+.DS_Store
+Thumbs.db
