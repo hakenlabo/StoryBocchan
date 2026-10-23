@@ -162,7 +162,7 @@
   function setupKeys() {
     document.addEventListener('keydown', function (e) {
       const tag = (e.target.tagName || '').toLowerCase();
-      if (tag === 'input' || tag === 'textarea' || tag === 'select' || MapView.isEditing() || AP.Draw.isOpen() || AP.Camera.isOpen() || AP.Project.isOpen()) return;
+      if (tag === 'input' || tag === 'textarea' || tag === 'select' || MapView.isEditing() || AP.Draw.isOpen() || AP.Camera.isOpen() || AP.Project.isOpen() || AP.Pdf.isOpen()) return;
       if (document.querySelector('.dialog-back:not([hidden])')) return;
       // 取り消し・やり直し（どの画面でも）
       const mod = e.metaKey || e.ctrlKey;
@@ -212,6 +212,7 @@
     AP.Clipboard.init();
     AP.Outline.init();
     AP.Project.init();
+    AP.Pdf.init();
     setupHeader();
     setupTabs();
     setupUndo();

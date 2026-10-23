@@ -100,7 +100,7 @@
     c2d.drawImage(layer, 0, 0);
 
     // F.I／F.O
-    const fd = AP.Camera.fade(cam, local, duration);
+    const fd = opts && opts.fade === false ? null : AP.Camera.fade(cam, local, duration);
     if (fd) {
       c2d.globalAlpha = fd.alpha;
       c2d.fillStyle = fd.color;
