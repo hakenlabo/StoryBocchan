@@ -61,6 +61,16 @@
     (strokes || []).forEach(function (s) { drawStroke(ctx, s, scale); });
   }
 
+  // 透明なキャンバスに絵を描いて返す。白い紙などに直接描くと、消しゴム（destination-out）が
+  // 下の紙ごと穴をあけてしまうので、絵の上に重ねるときは必ずこれを使う
+  function strokesLayer(strokes, w, h, scale) {
+    const cv = document.createElement('canvas');
+    cv.width = Math.max(1, Math.ceil(w));
+    cv.height = Math.max(1, Math.ceil(h));
+    drawStrokes(cv.getContext('2d'), strokes, scale);
+    return cv;
+  }
+
   // サムネイル（透明PNGのdata URL）。画面比の枠に用紙全体を収める。strokes配列・画面比・用紙が同じなら作り直さない
   const thumbCache = new WeakMap();
   function thumbURL(strokes, aspect, paper) {
@@ -460,6 +470,7 @@
     close: close,
     isOpen: isOpen,
     drawStrokes: drawStrokes,
+    strokesLayer: strokesLayer,
     thumbURL: thumbURL,
   };
 })();

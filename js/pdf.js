@@ -342,8 +342,10 @@
       const paper = c.paper || { w: 1, h: 1 };
       const pw = C.DRAW_BASE_W * paper.w, ph = (C.DRAW_BASE_W / ratio) * paper.h;
       const k = Math.min(w / pw, (thumbH * s) / ph);
-      ctx.translate(x + (w - pw * k) / 2, y + (thumbH * s - ph * k) / 2);
-      AP.Draw.drawStrokes(ctx, c.strokes, k);
+      // 透明な層に描いてから重ねる（消しゴムで紙に穴があいて黒くならないように）
+      if (c.strokes.length) {
+        ctx.drawImage(AP.Draw.strokesLayer(c.strokes, pw * k, ph * k, k), x + (w - pw * k) / 2, y + (thumbH * s - ph * k) / 2);
+      }
       ctx.restore();
       ctx.save();
       roundRect(ctx, x, y, w, h, 8 * s);

@@ -153,6 +153,8 @@ XMindの良さは「ポストイットのようにつけたり剥がしたりで
 - 線のデータ：`{ tool: 'pen'|'eraser', color, width, points: [[x, y, 筆圧], ...] }`。
   x, y は「絵の幅 = `config.DRAW_BASE_W`(1000)」の単位。高さは画面比で決まる。小数1桁に丸め、近すぎる点は捨てる。
 - 消しゴムも線として記録し、描画時に destination-out で消す（ベクターのまま部分消し）。
+  **白い紙など、すでに何か描いてあるキャンバスに直接 drawStrokes しないこと**（消しゴムが紙ごと穴をあけ、JPEGでは黒くなる）。
+  必ず透明な層に描いてから重ねる（`AP.Draw.strokesLayer`、Vコンテの絵の層、サムネイルの透明PNG）。
 - 筆圧：ペンは `pressure` を保存。マウス・指は `config.DRAW_NONPEN_PRESSURE` の固定値。
 - 手のひら対策：Apple Pencilを一度使ったら、そのセッション中は指で描かない（`config.DRAW_PEN_ONLY_AFTER_PEN`）。
 - 取り消し・やり直しはパネル内の履歴（線の配列のスナップショット）。「全部消す」も取り消せる。線を1本描くたびに保存。
