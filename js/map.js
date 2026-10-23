@@ -120,7 +120,7 @@
       el.classList.toggle('dragging', !!(drag && drag.started && drag.movingSet.has(c.id)));
       // タイムラインに採用済みなら「#番号 尺」を出す
       const thumb = el.querySelector('.card-thumb');
-      const url = AP.Draw.thumbURL(c.strokes, Store.settings().aspect);
+      const url = AP.Draw.thumbURL(c.strokes, Store.settings().aspect, c.paper);
       if (thumb.dataset.url !== url) {
         thumb.dataset.url = url;
         thumb.style.backgroundImage = url ? 'url(' + url + ')' : '';

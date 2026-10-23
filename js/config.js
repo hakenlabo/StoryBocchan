@@ -68,6 +68,16 @@ AP.CONFIG = {
   DRAW_MIN_POINT_DIST: 1.5,      // これより近い点は記録しない（データを軽くする）
   DRAW_UNDO_LIMIT: 100,
   DRAW_THUMB_W: 320,             // サムネイル画像の幅（px）
+  // 用紙：画面の何倍の大きさに描くか（PAN・FOLLOW用の長い絵）。w＝横、h＝縦
+  DRAW_PAPERS: [
+    { name: '標準（画面と同じ）', w: 1, h: 1 },
+    { name: '横長 ×1.5', w: 1.5, h: 1 },
+    { name: '横長 ×2', w: 2, h: 1 },
+    { name: '横長 ×3', w: 3, h: 1 },
+    { name: '縦長 ×1.5', w: 1, h: 1.5 },
+    { name: '縦長 ×2', w: 1, h: 2 },
+    { name: '縦長 ×3', w: 1, h: 3 },
+  ],
 
   // ---- Vコンテ ----
   VC_FONT_RATIO: 0.045,        // カット番号・テキストの文字の大きさ（画面の高さに対する割合）
@@ -78,7 +88,7 @@ AP.CONFIG = {
   CAM_PAN_AMOUNTS: [1.2, 1.5, 2],     // PAN：絵を何倍に拡大して端から端へ動かすか
   CAM_ZOOM_AMOUNTS: [1.2, 1.5, 2],    // T.U／T.B：何倍まで寄るか
   CAM_FOLLOW_AMOUNTS: [0.5, 1, 2],    // FOLLOW：1カットで絵が何画面ぶん流れるか
-  CAM_FADE_SECS: [0.25, 0.5, 1],      // FI／FO の長さ（秒）の選択肢
+  CAM_FADE_SECS: [0.25, 0.5, 1, 1.5, 2, 3], // FI／FO の長さ（秒）の選択肢
   CAM_DEFAULT_AMOUNT_INDEX: 1,
   CAM_PREVIEW_W: 360,                 // 設定パネルのプレビューの幅
 

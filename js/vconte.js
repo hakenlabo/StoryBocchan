@@ -68,9 +68,10 @@
     // 絵の層：カメラが動かないなら作り置き、動くなら毎コマ線から描く（拡大してもぼやけない）
     const baseH = C.DRAW_BASE_W / U.aspectRatio(st.aspect);
     const t = duration > 1 ? local / (duration - 1) : 0;
-    const v = AP.Camera.view(cam, t, baseH);
-    const still = v.z === 1 && !v.tile && v.cx === C.DRAW_BASE_W / 2 && v.cy === baseH / 2;
-    const key = card.id + '|' + W + 'x' + H;
+    const paper = card.paper || { w: 1, h: 1 };
+    const v = AP.Camera.view(cam, t, baseH, paper);
+    const still = !cam || !cam.move || cam.move === 'none';
+    const key = card.id + '|' + W + 'x' + H + '|' + v.z + ',' + v.cx + ',' + v.cy;
     if (!still || layerKey !== key || layer._strokes !== card.strokes) {
       if (layer.width !== W || layer.height !== H) { layer.width = W; layer.height = H; }
       layerCtx.setTransform(1, 0, 0, 1, 0, 0);
@@ -80,7 +81,7 @@
       if (v.tile) {
         // FOLLOW：窓にかかる分だけ絵を並べる
         offsets.length = 0;
-        const span = v.tile === 'x' ? C.DRAW_BASE_W : baseH;
+        const span = v.tile === 'x' ? C.DRAW_BASE_W * paper.w : baseH * paper.h;
         const c0 = v.tile === 'x' ? v.cx : v.cy;
         const half = span / v.z / 2;
         for (let k = Math.floor((c0 - half) / span); k <= Math.floor((c0 + half) / span); k++) {

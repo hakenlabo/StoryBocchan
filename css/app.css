@@ -634,3 +634,7 @@ body[data-view="outline"] .toolbar > :not(#btn-copy):not(#btn-paste) { visibilit
 .cam-frame.to { border-color: #e8590c; }
 .cam-frame.to span { background: #e8590c; top: auto; bottom: 2px; }
 .cam-tag { position: absolute; font-size: 12px; font-weight: 700; padding: 2px 8px; border-radius: 10px; background: rgba(0,0,0,.6); color: #fff; }
+
+.draw-paper { display: flex; align-items: center; gap: 4px; font-size: 13px; color: var(--sub); }
+.draw-paper select { min-height: 34px; border: 1px solid var(--border); border-radius: 6px; background: #fff; padding: 0 4px; }
+.cam-hint { margin: -2px 0 8px 74px; font-size: 12px; color: #b8650a; line-height: 1.5; }

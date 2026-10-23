@@ -88,7 +88,7 @@
         '<div class="tl-resize" title="ドラッグで尺を変える"></div>';
       el.querySelector('.tl-text').textContent = (c.linkOf ? '🔗 ' : '') + (src.text || '（無題）');
       if (c.linkOf) el.title = '連動カット：絵と文字は元のカードと共通です';
-      const url = AP.Draw.thumbURL(src.strokes, Store.settings().aspect);
+      const url = AP.Draw.thumbURL(src.strokes, Store.settings().aspect, src.paper);
       if (url) el.querySelector('.tl-thumb').style.backgroundImage = 'url(' + url + ')';
       track.appendChild(el);
       start += c.duration;

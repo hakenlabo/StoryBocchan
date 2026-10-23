@@ -27,6 +27,7 @@
       treeOrder: null,   // マップのツリー上の兄弟の順番（箇条書きの並び）。座標とは別に持つ
       linkOf: null,      // 連動カット：絵と文字はこのidのカードのものを使う（尺・順番・カメラは自分で持つ）
       camera: null,      // カメラワーク（js/camera.js）。なしは null
+      paper: { w: 1, h: 1 }, // 用紙の大きさ（画面の何倍か）。PAN・FOLLOW用の長い絵。絵と一緒なので連動カットは元のものを使う
     }, props || {});
   }
 
@@ -57,6 +58,7 @@
       const base = makeCard();
       const card = Object.assign(base, c);
       card.mapPos = Object.assign({ x: 0, y: 0 }, c.mapPos || {});
+      card.paper = Object.assign({ w: 1, h: 1 }, c.paper || {});
       return card;
     });
     // treeOrder がない古いデータは、マップの上から順に番号を振る
@@ -290,6 +292,13 @@
     emit('restore');
   };
 
+  S.setPaper = function (id, paper) {
+    const card = byId.get(id);
+    if (!card) return;
+    card.paper = { w: paper.w, h: paper.h };
+    emit('paper');
+  };
+
   S.setCamera = function (id, camera) {
     const card = byId.get(id);
     if (!card) return;
@@ -374,6 +383,7 @@
       duration: src.duration,
       note: src.note,
       camera: src.camera ? JSON.parse(JSON.stringify(src.camera)) : null,
+      paper: { w: src.paper.w, h: src.paper.h },
       parentId: src.parentId,
       mapPos: { x: src.mapPos.x, y: src.mapPos.y },
       treeOrder: src.treeOrder + 0.5,

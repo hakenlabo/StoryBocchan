@@ -36,6 +36,7 @@
         duration: card.duration,
         note: card.note,
         camera: card.camera ? JSON.parse(JSON.stringify(card.camera)) : null,
+        paper: { w: card.paper.w, h: card.paper.h },
         parentIndex: parentIndex,
         dx: card.mapPos.x - root.mapPos.x,
         dy: card.mapPos.y - root.mapPos.y,
@@ -81,7 +82,7 @@
         ? AP.MapView.freeSpot(center.x - C.CARD_W / 2, center.y - C.CARD_H_ESTIMATE / 2)
         : { x: base.mapPos.x + it.dx, y: base.mapPos.y + it.dy };
       created.push(Store.createCard({
-        text: it.text, strokes: it.strokes, duration: it.duration, note: it.note, camera: it.camera || null,
+        text: it.text, strokes: it.strokes, duration: it.duration, note: it.note, camera: it.camera || null, paper: it.paper || { w: 1, h: 1 },
         parentId: parentId, mapPos: pos,
       }));
     });

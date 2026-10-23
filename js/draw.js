@@ -61,20 +61,27 @@
     (strokes || []).forEach(function (s) { drawStroke(ctx, s, scale); });
   }
 
-  // サムネイル（透明PNGのdata URL）。strokes配列と画面比が同じなら作り直さない
+  // サムネイル（透明PNGのdata URL）。画面比の枠に用紙全体を収める。strokes配列・画面比・用紙が同じなら作り直さない
   const thumbCache = new WeakMap();
-  function thumbURL(strokes, aspect) {
+  function thumbURL(strokes, aspect, paper) {
     if (!strokes || !strokes.length) return '';
+    paper = paper || { w: 1, h: 1 };
+    const tag = aspect + '|' + paper.w + 'x' + paper.h;
     const hit = thumbCache.get(strokes);
-    if (hit && hit.aspect === aspect) return hit.url;
+    if (hit && hit.tag === tag) return hit.url;
     const w = C.DRAW_THUMB_W;
     const h = Math.round(w / U.aspectRatio(aspect));
+    const pw = C.DRAW_BASE_W * paper.w;
+    const ph = (C.DRAW_BASE_W / U.aspectRatio(aspect)) * paper.h;
+    const s = Math.min(w / pw, h / ph);
     const cv = document.createElement('canvas');
     cv.width = w;
     cv.height = h;
-    drawStrokes(cv.getContext('2d'), strokes, w / C.DRAW_BASE_W);
+    const c2 = cv.getContext('2d');
+    c2.translate((w - pw * s) / 2, (h - ph * s) / 2);
+    drawStrokes(c2, strokes, s);
     const url = cv.toDataURL('image/png');
-    thumbCache.set(strokes, { aspect: aspect, url: url });
+    thumbCache.set(strokes, { tag: tag, url: url });
     return url;
   }
 
@@ -109,8 +116,27 @@
     document.body.classList.add('drawing');
     AP.MapView.select(drawId);
     updateTitle();
+    updatePaperSelect();
     layout();
     updateButtons();
+  }
+
+  function paperOf() { return (drawId && Store.get(drawId).paper) || { w: 1, h: 1 }; }
+
+  function updatePaperSelect() {
+    const sel = document.getElementById('draw-paper');
+    const p = paperOf();
+    const i = C.DRAW_PAPERS.findIndex(function (x) { return x.w === p.w && x.h === p.h; });
+    sel.value = String(i >= 0 ? i : 0);
+  }
+
+  function setPaper(i) {
+    const p = C.DRAW_PAPERS[i];
+    if (!p || !drawId) return;
+    const before = paperOf();
+    Store.setPaper(drawId, p);
+    layout();
+    if (p.w < before.w || p.h < before.h) U.toast('用紙を小さくしました。はみ出た線は消えずに残っています（大きくすると見えます）');
   }
 
   function close() {
@@ -143,7 +169,8 @@
   // キャンバスを画面比を保ったまま、置ける範囲いっぱいにする
   function layout() {
     if (!cardId) return;
-    const ratio = U.aspectRatio(Store.settings().aspect);
+    const paper = paperOf();
+    const ratio = U.aspectRatio(Store.settings().aspect) * paper.w / paper.h; // 用紙の縦横比
     const r = stage.getBoundingClientRect();
     const pad = 16;
     let w = r.width - pad * 2;
@@ -156,7 +183,7 @@
     canvas.style.height = h + 'px';
     canvas.width = Math.round(w * dpr);
     canvas.height = Math.round(h * dpr);
-    scale = w / C.DRAW_BASE_W;
+    scale = w / (C.DRAW_BASE_W * paper.w);
     redraw();
     renderCamFrames();
   }
@@ -167,12 +194,16 @@
     box.innerHTML = '';
     const card = cardId && Store.get(cardId);
     const cam = card && card.camera;
-    if (!cam || !cam.move || cam.move === 'none') return;
+    const paper = paperOf();
+    const moving = cam && cam.move && cam.move !== 'none';
+    // 動きがなくても、長い用紙なら「画面」に映る範囲を出す
+    if (!moving && !AP.Camera.isLong(paper)) return;
     const baseH = C.DRAW_BASE_W / U.aspectRatio(Store.settings().aspect);
     const cr = canvas.getBoundingClientRect();
     const sr = stage.getBoundingClientRect();
-    [['始め', 0, 'from'], ['終わり', 1, 'to']].forEach(function (f) {
-      const r = AP.Camera.rectOf(AP.Camera.view(cam, f[1], baseH), baseH);
+    const frames = moving ? [['始め', 0, 'from'], ['終わり', 1, 'to']] : [['画面', 0, 'from']];
+    frames.forEach(function (f) {
+      const r = AP.Camera.rectOf(AP.Camera.view(cam, f[1], baseH, paper), baseH);
       const el = document.createElement('div');
       el.className = 'cam-frame ' + f[2];
       el.style.left = (cr.left - sr.left + r.x * scale) + 'px';
@@ -184,9 +215,9 @@
     });
     const tag = document.createElement('div');
     tag.className = 'cam-tag';
-    tag.textContent = '🎥 ' + AP.Camera.label(cam);
-    tag.style.left = (cr.left - sr.left + 6) + 'px';
-    tag.style.top = (cr.bottom - sr.top - 28) + 'px';
+    tag.textContent = moving ? '🎥 ' + AP.Camera.label(cam) : '用紙 ' + paper.w + '×' + paper.h + '（枠が画面に映る範囲）';
+    tag.style.right = (sr.right - cr.right + 6) + 'px';
+    tag.style.top = (cr.top - sr.top + 6) + 'px';
     box.appendChild(tag);
   }
 
@@ -367,6 +398,14 @@
     document.getElementById('draw-clear').addEventListener('click', clearAll);
     document.getElementById('draw-camera').addEventListener('click', function () { if (cardId) AP.Camera.open(cardId); });
     Store.subscribe(function (reason) { if (cardId && (reason === 'camera' || reason === 'settings')) renderCamFrames(); });
+    const paperSel = document.getElementById('draw-paper');
+    C.DRAW_PAPERS.forEach(function (p, i) {
+      const o = document.createElement('option');
+      o.value = String(i);
+      o.textContent = p.name;
+      paperSel.appendChild(o);
+    });
+    paperSel.addEventListener('change', function () { setPaper(Number(paperSel.value)); });
     document.getElementById('draw-copy').addEventListener('click', function () { AP.Clipboard.copyButton(); });
     document.getElementById('draw-paste').addEventListener('click', function () { AP.Clipboard.pasteButton(); });
     document.getElementById('draw-close').addEventListener('click', close);

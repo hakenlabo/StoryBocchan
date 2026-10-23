@@ -36,8 +36,11 @@
     return { move: 'none', dir: 'right', amount: null, focus: [0.5, 0.5], ease: 'linear', fi: 0, fo: 0, fadeColor: 'black' };
   }
 
-  function amountsFor(move) {
-    if (move === 'pan') return C.CAM_PAN_AMOUNTS;
+  function isLong(paper) { return !!paper && (paper.w > 1 || paper.h > 1); }
+
+  // 長い用紙のPANは「等倍で端から端へ」がふつうなので 1 倍も選べる
+  function amountsFor(move, paper) {
+    if (move === 'pan') return isLong(paper) ? [1].concat(C.CAM_PAN_AMOUNTS) : C.CAM_PAN_AMOUNTS;
     if (move === 'follow') return C.CAM_FOLLOW_AMOUNTS;
     if (move === 'tu' || move === 'tb') return C.CAM_ZOOM_AMOUNTS;
     return [];
@@ -49,49 +52,63 @@
     return !cam || ((!cam.move || cam.move === 'none') && !cam.fi && !cam.fo);
   }
 
-  function amountOf(cam) {
-    const list = amountsFor(cam.move);
-    return cam.amount || list[Math.min(C.CAM_DEFAULT_AMOUNT_INDEX, list.length - 1)] || 1;
+  function amountOf(cam, paper) {
+    if (cam.amount) return cam.amount;
+    if (cam.move === 'pan' && isLong(paper)) return 1;
+    const list = amountsFor(cam.move, paper);
+    return list[Math.min(C.CAM_DEFAULT_AMOUNT_INDEX, list.length - 1)] || 1;
   }
 
   function lerp(a, b, t) { return a + (b - a) * t; }
 
-  // カット内の進み具合 t（0〜1）でのカメラの窓
-  function view(cam, t, baseH) {
-    const W = C.DRAW_BASE_W, H = baseH;
-    const v = { z: 1, cx: W / 2, cy: H / 2, tile: null };
-    if (!cam || !cam.move || cam.move === 'none') return v;
+  // カット内の進み具合 t（0〜1）でのカメラの窓。
+  // baseH＝画面の高さ（絵の座標）、paper＝用紙の倍率 {w, h}（省略すると画面と同じ）
+  function view(cam, t, baseH, paper) {
+    paper = paper || { w: 1, h: 1 };
+    const FW = C.DRAW_BASE_W, FH = baseH;          // 画面（カメラの窓）の大きさ
+    const PW = FW * paper.w, PH = FH * paper.h;    // 用紙の大きさ
     const c = full(cam);
-    const a = amountOf(c);
+    // 止まっているときの窓：寄る位置（focus）に合わせ、用紙からはみ出さない所。標準の用紙なら真ん中
+    const home = function (z) {
+      return {
+        x: U.clamp(c.focus[0] * PW, FW / (2 * z), PW - FW / (2 * z)),
+        y: U.clamp(c.focus[1] * PH, FH / (2 * z), PH - FH / (2 * z)),
+      };
+    };
+    const h1 = home(1);
+    const v = { z: 1, cx: h1.x, cy: h1.y, tile: null };
+    if (!cam || !c.move || c.move === 'none') return v;
+    const a = amountOf(c, paper);
     const e = c.ease === 'slow' ? (1 - Math.cos(Math.PI * t)) / 2 : t;
     const horiz = c.dir === 'left' || c.dir === 'right';
 
     if (c.move === 'pan') {
       v.z = a;
-      const vw = W / a, vh = H / a;
+      const vw = FW / a, vh = FH / a;
       if (horiz) {
-        v.cy = U.clamp(c.focus[1] * H, vh / 2, H - vh / 2);
-        const from = vw / 2, to = W - vw / 2;
+        v.cy = U.clamp(c.focus[1] * PH, vh / 2, PH - vh / 2);
+        const from = vw / 2, to = PW - vw / 2;
         v.cx = c.dir === 'right' ? lerp(from, to, e) : lerp(to, from, e);
       } else {
-        v.cx = U.clamp(c.focus[0] * W, vw / 2, W - vw / 2);
-        const from = vh / 2, to = H - vh / 2;
+        v.cx = U.clamp(c.focus[0] * PW, vw / 2, PW - vw / 2);
+        const from = vh / 2, to = PH - vh / 2;
         v.cy = c.dir === 'down' ? lerp(from, to, e) : lerp(to, from, e);
       }
     } else if (c.move === 'follow') {
-      // 背景が流れ続ける。速さは均等（緩急をつけると止まって見えるため）
-      const dist = a * (horiz ? W : H) * t;
-      if (c.dir === 'right') v.cx += dist;
-      else if (c.dir === 'left') v.cx -= dist;
-      else if (c.dir === 'down') v.cy += dist;
-      else v.cy -= dist;
+      // 背景が流れ続ける（用紙を並べて敷き詰める）。速さは均等（緩急をつけると止まって見えるため）
+      // 動き出す側の端から始める（→なら用紙の左端）
+      const dist = a * (horiz ? FW : FH) * t;
+      if (c.dir === 'right') v.cx = FW / 2 + dist;
+      else if (c.dir === 'left') v.cx = PW - FW / 2 - dist;
+      else if (c.dir === 'down') v.cy = FH / 2 + dist;
+      else v.cy = PH - FH / 2 - dist;
       v.tile = horiz ? 'x' : 'y';
     } else if (c.move === 'tu' || c.move === 'tb') {
       const k = c.move === 'tu' ? e : 1 - e;  // 0＝引き、1＝寄り
       v.z = lerp(1, a, k);
-      const tx = c.focus[0] * W, ty = c.focus[1] * H;
-      v.cx = U.clamp(lerp(W / 2, tx, k), W / (2 * v.z), W - W / (2 * v.z));
-      v.cy = U.clamp(lerp(H / 2, ty, k), H / (2 * v.z), H - H / (2 * v.z));
+      const target = home(a);
+      v.cx = U.clamp(lerp(h1.x, target.x, k), FW / (2 * v.z), PW - FW / (2 * v.z));
+      v.cy = U.clamp(lerp(h1.y, target.y, k), FH / (2 * v.z), PH - FH / (2 * v.z));
     }
     return v;
   }
@@ -138,7 +155,9 @@
   function save(patch) {
     const next = Object.assign(cur(), patch);
     if (patch.move) next.amount = null; // 動きを変えたら量は既定に
-    Store.setCamera(cardId, isEmpty(next) ? null : next);
+    // 動きなしでも「映す位置」を決めていれば残す（長い用紙のため）
+    const placed = next.focus[0] !== 0.5 || next.focus[1] !== 0.5;
+    Store.setCamera(cardId, isEmpty(next) && !placed ? null : next);
     build();
   }
 
@@ -169,6 +188,7 @@
     if (!card) return close();
     const c = cur();
     const fps = Store.settings().fps;
+    const paper = Store.source(card).paper;
     const list = Store.timelineCards();
     const i = list.findIndex(function (x) { return x.id === cardId; });
     titleEl.textContent = 'カメラワーク　' + (i >= 0 ? '#' + (i + 1) + '  ' : '') + (Store.source(card).text || '（無題）') +
@@ -182,14 +202,21 @@
     if (c.move !== 'none') {
       const unit = c.move === 'follow' ? '画面' : '倍';
       body.appendChild(seg(c.move === 'follow' ? '流れる量' : (c.move === 'pan' ? '拡大' : '寄り'),
-        amountsFor(c.move).map(function (a) { return { id: a, label: a + unit }; }),
-        amountOf(c), function (v) { save({ amount: v }); }));
+        amountsFor(c.move, paper).map(function (a) { return { id: a, label: (c.move === 'pan' && a === 1 ? '等倍（用紙の端から端へ）' : a + unit) }; }),
+        amountOf(c, paper), function (v) { save({ amount: v }); }));
     }
-    if (c.move === 'tu' || c.move === 'tb') {
-      // 寄る位置（3×3）
+    if ((c.move === 'pan' || c.move === 'follow') && !isLong(paper)) {
+      const hint = document.createElement('div');
+      hint.className = 'cam-hint';
+      hint.textContent = '長い背景を描くなら、描画パネルの「用紙」を横長（縦長）にしてください。' +
+        (c.move === 'follow' ? '用紙の右端と左端がつながるように描くと、途切れずに流れます。' : '');
+      body.appendChild(hint);
+    }
+    if (c.move === 'tu' || c.move === 'tb' || (c.move === 'none' && isLong(paper))) {
+      // 寄る位置（3×3）。長い用紙で動きなしのときは、用紙のどこを映すか
       const row = document.createElement('div');
       row.className = 'cam-row';
-      row.innerHTML = '<div class="cam-label">寄る位置</div>';
+      row.innerHTML = '<div class="cam-label">' + (c.move === 'none' ? '映す位置' : '寄る位置') + '</div>';
       const grid = document.createElement('div');
       grid.className = 'cam-grid';
       [0, 0.5, 1].forEach(function (fy) {
@@ -302,6 +329,7 @@
     fade: fade,
     label: label,
     isEmpty: isEmpty,
+    isLong: isLong,
     open: open,
     close: close,
     isOpen: function () { return !!cardId; },
