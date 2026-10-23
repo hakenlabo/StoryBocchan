@@ -48,6 +48,7 @@
     const meta = [];
     if (tl.has(c.id)) meta.push(tl.get(c.id).map(function (i) { return '#' + i; }).join(' '));
     if (c.strokes.length) meta.push('✎');
+    if (c.note) meta.push('💬');
     el.innerHTML =
       '<span class="ol-bullet" title="マップで選択"></span>' +
       '<textarea class="ol-text" rows="1" placeholder="（空の行）"></textarea>' +

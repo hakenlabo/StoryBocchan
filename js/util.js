@@ -112,5 +112,38 @@
     });
   };
 
+  // 文字を入力してもらう小さなダイアログ。保存なら文字、やめたら null を返す Promise
+  U.editText = function (title, value, placeholder) {
+    return new Promise(function (resolve) {
+      const back = document.createElement('div');
+      back.className = 'dialog-back';
+      back.innerHTML =
+        '<div class="dialog" role="dialog"><div class="dialog-title"></div>' +
+        '<textarea class="dialog-textarea" rows="4"></textarea>' +
+        '<div class="dialog-buttons"><button type="button" data-v="cancel">やめる</button>' +
+        '<button type="button" class="primary" data-v="ok">保存</button></div></div>';
+      back.querySelector('.dialog-title').textContent = title;
+      const ta = back.querySelector('textarea');
+      ta.value = value || '';
+      ta.placeholder = placeholder || '';
+      const done = function (v) {
+        document.removeEventListener('keydown', onKey, true);
+        back.remove();
+        resolve(v);
+      };
+      const onKey = function (e) {
+        if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); done(null); }
+        else if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) { e.preventDefault(); e.stopPropagation(); done(ta.value); }
+        else e.stopPropagation();
+      };
+      back.querySelector('[data-v="cancel"]').addEventListener('click', function () { done(null); });
+      back.querySelector('[data-v="ok"]').addEventListener('click', function () { done(ta.value); });
+      back.addEventListener('pointerdown', function (e) { if (e.target === back) done(null); });
+      document.addEventListener('keydown', onKey, true);
+      document.body.appendChild(back);
+      ta.focus();
+    });
+  };
+
   AP.util = U;
 })();

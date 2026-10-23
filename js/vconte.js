@@ -124,14 +124,23 @@
       c2d.textAlign = 'left';
       c2d.fillText(label, pad * 2, pad + fs * 0.75);
     }
+    // 下から：カードの文字（灰色の帯）、その上にセリフ（黄色い字）
+    const bandH = fs * 1.8;
+    let bottom = H;
     if (st.vcShowText && card.text) {
-      const line = card.text.replace(/\s*\n\s*/g, '　');
-      const bandH = fs * 1.8;
       c2d.fillStyle = 'rgba(0,0,0,.55)';
-      c2d.fillRect(0, H - bandH, W, bandH);
+      c2d.fillRect(0, bottom - bandH, W, bandH);
       c2d.fillStyle = '#fff';
       c2d.textAlign = 'center';
-      c2d.fillText(line, W / 2, H - bandH / 2, W - fs * 2);
+      c2d.fillText(card.text.replace(/\s*\n\s*/g, '　'), W / 2, bottom - bandH / 2, W - fs * 2);
+      bottom -= bandH;
+    }
+    if (st.vcShowNote && card.note) {
+      c2d.fillStyle = 'rgba(0,0,0,.7)';
+      c2d.fillRect(0, bottom - bandH, W, bandH);
+      c2d.fillStyle = '#ffe066';
+      c2d.textAlign = 'center';
+      c2d.fillText(card.note.replace(/\s*\n\s*/g, '　'), W / 2, bottom - bandH / 2, W - fs * 2);
     }
   }
 
@@ -330,6 +339,9 @@
 
     const cutNo = document.getElementById('vc-show-cutno');
     const text = document.getElementById('vc-show-text');
+    const note = document.getElementById('vc-show-note');
+    note.checked = !!Store.settings().vcShowNote;
+    note.addEventListener('change', function () { Store.setSetting('vcShowNote', note.checked); });
     cutNo.checked = !!Store.settings().vcShowCutNo;
     text.checked = !!Store.settings().vcShowText;
     cutNo.addEventListener('change', function () { Store.setSetting('vcShowCutNo', cutNo.checked); });

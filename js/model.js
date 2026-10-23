@@ -33,6 +33,7 @@
 
   function defaultSettings() {
     return { fps: C.DEFAULT_FPS, aspect: C.DEFAULT_ASPECT, vcShowCutNo: C.VC_SHOW_CUT_NO, vcShowText: C.VC_SHOW_TEXT,
+      vcShowNote: C.VC_SHOW_NOTE,
       mapSnap: C.GRID_DEFAULT_SNAP };
   }
 

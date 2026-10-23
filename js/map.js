@@ -93,6 +93,7 @@
     el.innerHTML =
       '<div class="card-thumb"><span class="card-badge"></span></div>' +
       '<div class="card-text"></div>' +
+      '<div class="card-note"></div>' +
       '<button class="card-peel" type="button" title="保留トレイへ（Delete）">剥がす</button>';
     el.querySelector('.card-peel').addEventListener('click', function (e) {
       e.stopPropagation();
@@ -139,6 +140,9 @@
       badge.textContent = !ti ? '' : ti.length === 1
         ? '#' + ti[0] + '  ' + U.framesToLabel(c.duration, fps)
         : ti.map(function (i) { return '#' + i; }).join(' ');
+      const noteEl = el.querySelector('.card-note');
+      const noteText = c.note ? '💬 ' + c.note.split('\n')[0] : '';
+      if (noteEl.textContent !== noteText) noteEl.textContent = noteText;
       if (c.id !== editingId) {
         const t = el.querySelector('.card-text');
         t.textContent = c.text;

@@ -117,8 +117,17 @@
     AP.MapView.select(drawId);
     updateTitle();
     updatePaperSelect();
+    fillNotes();
     layout();
     updateButtons();
+  }
+
+  // ---- 内容（カードの文字）・セリフ／メモ ----
+  // 連動カットでも元のカード（drawId）に書く（絵と同じく共通）
+  function fillNotes() {
+    const src = Store.get(drawId);
+    document.getElementById('draw-text').value = src.text || '';
+    document.getElementById('draw-note').value = src.note || '';
   }
 
   function paperOf() { return (drawId && Store.get(drawId).paper) || { w: 1, h: 1 }; }
@@ -343,6 +352,13 @@
 
   function onKeyDown(e) {
     if (!cardId || AP.Camera.isOpen()) return; // カメラ設定を開いている間はそちらが受ける
+    const tag = (e.target.tagName || '').toLowerCase();
+    if (tag === 'textarea' || tag === 'input') {
+      // 内容・セリフ欄で入力中：ふつうの文字入力。Escだけは欄から抜ける
+      if (e.key === 'Escape') { e.preventDefault(); e.target.blur(); }
+      e.stopPropagation();
+      return;
+    }
     const mod = e.metaKey || e.ctrlKey;
     if (mod && e.key.toLowerCase() === 'z') { e.preventDefault(); e.shiftKey ? redo() : undo(); }
     else if (mod && e.key.toLowerCase() === 'y') { e.preventDefault(); redo(); }
@@ -396,6 +412,16 @@
     undoBtn.addEventListener('click', undo);
     redoBtn.addEventListener('click', redo);
     document.getElementById('draw-clear').addEventListener('click', clearAll);
+    ['text', 'note'].forEach(function (k) {
+      const ta = document.getElementById('draw-' + k);
+      ta.addEventListener('input', function () {
+        if (!drawId) return;
+        const patch = {};
+        patch[k] = ta.value;
+        Store.updateCard(drawId, patch);
+        if (k === 'text') updateTitle();
+      });
+    });
     document.getElementById('draw-camera').addEventListener('click', function () { if (cardId) AP.Camera.open(cardId); });
     Store.subscribe(function (reason) { if (cardId && (reason === 'camera' || reason === 'settings')) renderCamFrames(); });
     const paperSel = document.getElementById('draw-paper');

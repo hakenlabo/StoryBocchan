@@ -128,6 +128,7 @@
         <span id="vc-cut" class="vc-cut"></span>
         <label class="vc-opt"><input id="vc-show-cutno" type="checkbox"> カット番号</label>
         <label class="vc-opt"><input id="vc-show-text" type="checkbox"> テキスト</label>
+        <label class="vc-opt"><input id="vc-show-note" type="checkbox"> セリフ</label>
         <button id="vc-camera" type="button" title="いま表示しているカットのカメラワーク">🎥 カメラ</button>
         <button id="vc-draw" type="button" title="いま表示しているカットを描画パネルで開く">✎ このカットを描く</button>
       </div>
@@ -162,6 +163,12 @@
       <button id="draw-close" class="primary" type="button" title="閉じる（Esc）">完了</button>
     </div>
     <div id="draw-stage" class="draw-stage"><canvas id="draw-canvas"></canvas><div id="draw-camframes" class="draw-camframes"></div></div>
+    <div class="draw-notes">
+      <label class="draw-note-field"><span>内容（カードの文字）</span>
+        <textarea id="draw-text" rows="2" placeholder="何が起きるカットか（ト書き）"></textarea></label>
+      <label class="draw-note-field"><span>セリフ・メモ（SE・BGM）</span>
+        <textarea id="draw-note" rows="2" placeholder="「セリフ」／SE：チャイム／BGM：○○ など。絵コンテのセリフ欄に入ります"></textarea></label>
+    </div>
   </div>
 
   <div id="toast" class="toast" role="status"></div>

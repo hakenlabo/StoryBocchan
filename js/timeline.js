@@ -90,9 +90,11 @@
         '<div class="tl-dur" title="タップして尺を入力（秒+コマ）">' + U.framesToLabel(c.duration, fps) + '</div>' +
         '<div class="tl-cam' + (AP.Camera.isEmpty(c.camera) ? ' empty' : '') + '" title="カメラワーク（PAN・T.U・F.Iなど）">' +
           (AP.Camera.label(c.camera) || '🎥') + '</div>' +
+        '<div class="tl-note' + (src.note ? '' : ' empty') + '" title="セリフ・メモ（SE・BGM）"></div>' +
         '<div class="tl-remove" title="タイムラインから外す（カードは消えません）">×</div>' +
         '<div class="tl-resize" title="ドラッグで尺を変える"></div>';
       el.querySelector('.tl-text').textContent = (c.linkOf ? '🔗 ' : '') + (src.text || '（無題）');
+      el.querySelector('.tl-note').textContent = src.note ? '💬 ' + src.note.split('\n')[0] : '💬';
       if (c.linkOf) el.title = '連動カット：絵と文字は元のカードと共通です';
       const url = AP.Draw.thumbURL(src.strokes, Store.settings().aspect, src.paper);
       if (url) el.querySelector('.tl-thumb').style.backgroundImage = 'url(' + url + ')';
@@ -301,6 +303,16 @@
       if (p.target.closest('.tl-remove')) {
         Store.unadopt(p.id);
         U.toast('タイムラインから外しました（カードはマップに残っています）');
+      } else if (p.target.closest('.tl-note')) {
+        const src = Store.source(Store.get(p.id));
+        AP.MapView.select(src.id);
+        U.editText('セリフ・メモ（SE・BGM）　' + (src.text || '（無題）'), src.note,
+          '「セリフ」／SE：チャイム／BGM：○○ など（⌘Enterで保存）').then(function (v) {
+          if (v === null || v === src.note) return;
+          Store.checkpoint(); // ダイアログでの保存は1回の操作（前の入力とまとめない）
+          Store.updateCard(src.id, { note: v });
+          Store.checkpoint();
+        });
       } else if (p.target.closest('.tl-cam')) {
         AP.MapView.select(Store.source(Store.get(p.id)).id);
         AP.Camera.open(p.id);
