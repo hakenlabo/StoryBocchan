@@ -9,7 +9,9 @@
 <body data-view="map">
   <header class="app-header">
     <div class="brand">アニメ・プリプロ</div>
+    <button id="btn-project" type="button" title="新しいプロジェクト・ほかのプロジェクトを開く・ファイルから開く">📁 プロジェクト</button>
     <input id="project-title" class="project-title" type="text" aria-label="作品名">
+    <button id="btn-save" type="button" title="作品をファイル（zip）に保存。バックアップや別の端末へ（⌘/Ctrl+S）">💾 保存</button>
     <nav class="view-tabs">
       <button class="tab" type="button" data-view="outline" title="箇条書きでどんどんアイデアを出す（マップと連動）">箇条書き</button>
       <button class="tab active" type="button" data-view="map" title="マップと、下にタイムライン">マップ</button>
@@ -150,6 +152,8 @@
   <script src="js/vconte.js"></script>
   <script src="js/clipboard.js"></script>
   <script src="js/outline.js"></script>
+  <script src="js/zip.js"></script>
+  <script src="js/project.js"></script>
   <script src="js/app.js"></script>
 </body>
 </html>

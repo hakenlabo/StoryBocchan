@@ -99,8 +99,51 @@
       localStorage.setItem(LS_PREFIX + 'project:' + data.id, JSON.stringify(data));
       localStorage.setItem(LS_PREFIX + 'current', data.id);
     } else {
+      memory.set(data.id, data);
       throw new Error('このブラウザでは自動保存できません');
     }
+  };
+
+  // ---- 複数のプロジェクト ----
+  const memory = new Map(); // 保存できない環境でも、開いている間は切り替えられるように
+
+  function summary(p) {
+    const cuts = (p.cards || []).filter(function (c) { return c.timelineOrder !== null && c.status === 'active'; }).length;
+    return { id: p.id, title: p.title || '無題の作品', updatedAt: p.updatedAt || 0, createdAt: p.createdAt || 0,
+      cards: (p.cards || []).filter(function (c) { return !c.linkOf; }).length, cuts: cuts };
+  }
+
+  // このブラウザにあるプロジェクトの一覧（新しく更新した順）
+  St.listProjects = async function () {
+    let all = [];
+    if (backend === 'indexeddb') {
+      all = (await idb('projects', 'readonly', function (s) { return s.getAll(); })) || [];
+    } else if (backend === 'localstorage') {
+      for (let i = 0; i < localStorage.length; i++) {
+        const k = localStorage.key(i);
+        if (k && k.indexOf(LS_PREFIX + 'project:') === 0) {
+          try { all.push(JSON.parse(localStorage.getItem(k))); } catch (e) { /* 壊れたものは飛ばす */ }
+        }
+      }
+    } else {
+      all = Array.from(memory.values());
+    }
+    return all.map(summary).sort(function (a, b) { return b.updatedAt - a.updatedAt; });
+  };
+
+  St.loadProject = async function (id) {
+    if (backend === 'indexeddb') return (await idb('projects', 'readonly', function (s) { return s.get(id); })) || null;
+    if (backend === 'localstorage') {
+      const json = localStorage.getItem(LS_PREFIX + 'project:' + id);
+      return json ? JSON.parse(json) : null;
+    }
+    return memory.get(id) || null;
+  };
+
+  St.deleteProject = async function (id) {
+    if (backend === 'indexeddb') await idb('projects', 'readwrite', function (s) { return s.delete(id); });
+    else if (backend === 'localstorage') localStorage.removeItem(LS_PREFIX + 'project:' + id);
+    memory.delete(id);
   };
 
   St.schedule = function (project) {

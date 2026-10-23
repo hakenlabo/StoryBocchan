@@ -638,3 +638,35 @@ body[data-view="outline"] .toolbar > :not(#btn-copy):not(#btn-paste) { visibilit
 .draw-paper { display: flex; align-items: center; gap: 4px; font-size: 13px; color: var(--sub); }
 .draw-paper select { min-height: 34px; border: 1px solid var(--border); border-radius: 6px; background: #fff; padding: 0 4px; }
 .cam-hint { margin: -2px 0 8px 74px; font-size: 12px; color: #b8650a; line-height: 1.5; }
+
+/* ---- プロジェクト ---- */
+.pj-dialog { max-width: 620px; max-height: calc(100vh - 32px); overflow-y: auto; }
+.pj-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 8px; }
+.pj-actions button { min-height: 38px; }
+.pj-actions .primary, .pj-row .primary { background: var(--accent); color: #fff; border-color: var(--accent); }
+.pj-info { font-size: 12px; color: var(--sub); line-height: 1.6; margin: 0 0 12px; }
+.pj-label { font-size: 12px; font-weight: 700; color: var(--sub); margin-bottom: 6px; }
+.pj-list { display: flex; flex-direction: column; gap: 6px; margin-bottom: 14px; }
+.pj-row { display: flex; align-items: center; gap: 6px; padding: 8px 10px; border: 1px solid var(--border); border-radius: 8px; }
+.pj-row.current { border-color: var(--accent); background: #f3f6fd; }
+.pj-main { flex: 1; min-width: 0; }
+.pj-title { font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pj-meta { font-size: 11px; color: var(--sub); }
+.pj-row button { min-height: 32px; font-size: 13px; }
+.pj-row .danger { color: var(--danger); }
+
+/* ---- 見出しが窮屈なとき（iPad横など） ---- */
+.app-header { gap: 8px; }
+.app-header button, .view-tabs .tab { white-space: nowrap; }
+.save-status { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+@media (max-width: 1280px) {
+  .brand { display: none; }
+  .project-title { width: 150px; }
+}
+@media (max-width: 1100px) {
+  .settings label { font-size: 12px; }
+  #btn-project { font-size: 0; padding: 4px 8px; }
+  #btn-project::before { content: "📁"; font-size: 14px; }
+  #btn-save { font-size: 0; padding: 4px 8px; }
+  #btn-save::before { content: "💾 保存"; font-size: 14px; }
+}

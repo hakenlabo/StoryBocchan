@@ -38,6 +38,23 @@
     const aspect = document.getElementById('setting-aspect');
     fillSelect(aspect, C.ASPECT_OPTIONS, Store.settings().aspect);
     aspect.addEventListener('change', function () { Store.setSetting('aspect', aspect.value); });
+
+    // 別のプロジェクトに切り替えたら、見出しと今の画面を作り直す
+    document.addEventListener('ap:projectloaded', function () {
+      title.value = Store.project().title;
+      fps.value = String(Store.settings().fps);
+      aspect.value = String(Store.settings().aspect);
+      document.title = Store.project().title + ' - アニメ・プリプロ';
+      MapView.fit();
+      const v = document.body.dataset.view;
+      if (v === 'vconte') AP.Vconte.show();
+      else if (v === 'outline') AP.Outline.show();
+      else AP.Timeline.render();
+    });
+    document.title = Store.project().title + ' - アニメ・プリプロ';
+    Store.subscribe(function (reason) {
+      if (reason === 'title') document.title = Store.project().title + ' - アニメ・プリプロ';
+    });
   }
 
   function setupToolbar() {
@@ -84,7 +101,7 @@
   function setupKeys() {
     document.addEventListener('keydown', function (e) {
       const tag = (e.target.tagName || '').toLowerCase();
-      if (tag === 'input' || tag === 'textarea' || tag === 'select' || MapView.isEditing() || AP.Draw.isOpen() || AP.Camera.isOpen()) return;
+      if (tag === 'input' || tag === 'textarea' || tag === 'select' || MapView.isEditing() || AP.Draw.isOpen() || AP.Camera.isOpen() || AP.Project.isOpen()) return;
       if (document.body.dataset.view === 'vconte') return AP.Vconte.onKey(e);
       if (document.body.dataset.view === 'outline') return;
       const sel = MapView.selected();
@@ -127,6 +144,7 @@
     AP.Vconte.init();
     AP.Clipboard.init();
     AP.Outline.init();
+    AP.Project.init();
     setupHeader();
     setupTabs();
     setupToolbar();
