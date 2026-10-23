@@ -102,10 +102,18 @@
   // ------------------------------------------------------------
   // 挿入位置
   // ------------------------------------------------------------
-  function cardEls(excludeId) {
+  // exclude はid1つか、idの Set（複数選択でまとめてドラッグしているとき）
+  function cardEls(exclude) {
     return Array.prototype.filter.call(track.querySelectorAll('.tl-card'), function (el) {
-      return el.dataset.id !== excludeId;
+      return exclude instanceof Set ? !exclude.has(el.dataset.id) : el.dataset.id !== exclude;
     });
+  }
+
+  // 挿入位置のすぐ後ろのカードのid（最後なら null）
+  function beforeIdAt(cx, exclude) {
+    const els = cardEls(exclude);
+    const el = els[indexAt(cx, exclude)];
+    return el ? el.dataset.id : null;
   }
 
   function indexAt(cx, excludeId) {
@@ -363,6 +371,7 @@
     render: render,
     isOver: isOver,
     indexAt: indexAt,
+    beforeIdAt: beforeIdAt,
     showInsert: showInsert,
     hideInsert: hideInsert,
     autoscroll: autoscroll,

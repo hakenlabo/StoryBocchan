@@ -711,3 +711,20 @@ body[data-view="outline"] .toolbar > * { visibility: hidden; }
 /* ---- 取り消し・やり直し ---- */
 .undo-group { display: flex; gap: 2px; }
 .undo-group button { min-width: 34px; font-size: 16px; padding: 2px 8px; }
+
+/* ---- 複数選択 ---- */
+.card.multi { border-color: #7c3aed; box-shadow: 0 0 0 3px rgba(124,58,237,.3); }
+.card.multi::after {
+  content: attr(data-multi);
+  position: absolute;
+  left: -10px; top: -10px;
+  width: 22px; height: 22px;
+  border-radius: 50%;
+  background: #7c3aed;
+  color: #fff;
+  font-size: 12px; font-weight: 700;
+  display: flex; align-items: center; justify-content: center;
+  z-index: 4;
+}
+.card.multi .card-peel { display: none !important; }
+#btn-multi.active { background: #7c3aed; color: #fff; border-color: #7c3aed; }

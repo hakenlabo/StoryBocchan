@@ -449,6 +449,23 @@
     emit('timeline');
   };
 
+  // まとめて採用：ids をこの順に、beforeId のカードの前（null なら最後）へ並べる。すでに並んでいるものもこの流れに入れ直す
+  S.adoptMany = function (ids, beforeId) {
+    const set = new Set(ids);
+    const vis = S.timelineCards().filter(function (c) { return !set.has(c.id); });
+    let idx = beforeId ? vis.findIndex(function (c) { return c.id === beforeId; }) : vis.length;
+    if (idx < 0) idx = vis.length;
+    const prev = vis[idx - 1], next = vis[idx];
+    const lo = prev ? prev.timelineOrder : (next ? next.timelineOrder - 1 : 0);
+    const hi = next ? next.timelineOrder : lo + 1;
+    ids.forEach(function (id, k) {
+      const c = byId.get(id);
+      if (c) c.timelineOrder = lo + (hi - lo) * (k + 1) / (ids.length + 1);
+    });
+    normalizeOrders();
+    emit('timeline');
+  };
+
   S.unadopt = function (id) {
     const card = byId.get(id);
     if (!card) return;

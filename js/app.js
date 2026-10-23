@@ -67,7 +67,13 @@
     btnDraw.addEventListener('click', function () { if (MapView.selected()) AP.Draw.open(MapView.selected()); });
     document.getElementById('btn-add').addEventListener('click', function () { MapView.createAtCenter(); });
     btnChild.addEventListener('click', function () { MapView.addChildOfSelected(); });
-    btnPeel.addEventListener('click', function () { MapView.peel(MapView.selected()); });
+    btnPeel.addEventListener('click', function () { MapView.peelSelection(); });
+    // 複数選択（iPad向け。Macは Shift＋クリック）
+    document.getElementById('btn-multi').addEventListener('click', function () {
+      MapView.setMultiMode(!MapView.multiMode());
+      updateMultiButton();
+      if (MapView.multiMode()) U.toast('複数選択：タップしたカードが順に選ばれます。選んだカードをタイムラインへドラッグすると、その順に並びます');
+    });
     const btnCopy = document.getElementById('btn-copy');
     btnCopy.addEventListener('click', function () { AP.Clipboard.copyButton(); });
     document.getElementById('btn-paste').addEventListener('click', function () { AP.Clipboard.pasteButton(); });
@@ -104,6 +110,7 @@
       btnPeel.disabled = !has;
     };
     document.addEventListener('ap:select', update);
+    document.addEventListener('ap:select', updateMultiButton);
     update();
   }
 
@@ -142,6 +149,13 @@
     update();
   }
 
+  function updateMultiButton() {
+    const b = document.getElementById('btn-multi');
+    const n = MapView.multiSelected().length;
+    b.classList.toggle('active', MapView.multiMode());
+    b.textContent = '☑ 複数選択' + (n ? '（' + n + '）' : '');
+  }
+
   function setupKeys() {
     document.addEventListener('keydown', function (e) {
       const tag = (e.target.tagName || '').toLowerCase();
@@ -157,12 +171,13 @@
       if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
         e.preventDefault(); MapView.addNextCard();
       } else if ((e.key === 'Delete' || e.key === 'Backspace') && sel) {
-        e.preventDefault(); MapView.peel(sel);
+        e.preventDefault(); MapView.peelSelection();
       } else if (e.key === 'Tab' && sel) {
         e.preventDefault(); MapView.addChildOfSelected();
       } else if ((e.key === 'Enter' || e.key === 'F2') && sel) {
         e.preventDefault(); MapView.startEdit(sel);
       } else if (e.key === 'Escape') {
+        if (MapView.multiMode()) { MapView.setMultiMode(false); updateMultiButton(); }
         MapView.select(null);
       } else if ((e.metaKey || e.ctrlKey) && e.key === '0') {
         e.preventDefault(); MapView.fit();

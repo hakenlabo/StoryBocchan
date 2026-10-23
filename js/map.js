@@ -14,6 +14,8 @@
   const heights = new Map();  // cardId -> 実測の高さ（ワールドpx）
 
   let selectedId = null;
+  let multi = [];           // 複数選択（選んだ順）。2枚以上のときだけ意味を持つ
+  let multiMode = false;    // iPad用：タップで選択に足していくモード
   let editingId = null;
   let newCardId = null;       // 作った直後のカード（空のまま確定したら消すため）
   let dropTargetId = null;
@@ -124,6 +126,9 @@
       el.style.width = C.CARD_W + 'px';
       el.querySelector('.card-thumb').style.height = Math.round(C.CARD_W / ratio) + 'px';
       el.classList.toggle('selected', c.id === selectedId);
+      const mi = multi.indexOf(c.id);
+      el.classList.toggle('multi', mi >= 0 && multi.length > 0);
+      if (mi >= 0) el.dataset.multi = String(mi + 1); else delete el.dataset.multi;
       el.classList.toggle('drop-target', c.id === dropTargetId);
       el.classList.toggle('dragging', !!(drag && drag.started && drag.movingSet.has(c.id)));
       // タイムラインに採用済みなら「#番号 尺」を出す
@@ -207,7 +212,8 @@
   // 選択・編集・カード操作
   // ------------------------------------------------------------
   function select(id) {
-    if (selectedId === id) return;
+    if (multi.length) { multi = []; selectedId = null; }
+    if (selectedId === id) return render();
     selectedId = id;
     render();
     document.dispatchEvent(new CustomEvent('ap:select', { detail: { id: id } }));
@@ -521,9 +527,14 @@
 
   // ---- カード ----
   function startCardPress(e, id) {
-    const moving = [Store.get(id)].concat(C.MOVE_SUBTREE_WITH_PARENT
-      ? Store.descendants(id, function (d) { return d.status === 'active'; })
-      : []);
+    const group = multi.length > 1 && multi.indexOf(id) >= 0 ? multi.slice() : null;
+    const moving = [];
+    (group || [id]).forEach(function (gid) {
+      moving.push(Store.get(gid));
+      if (C.MOVE_SUBTREE_WITH_PARENT) {
+        Array.prototype.push.apply(moving, Store.descendants(gid, function (d) { return d.status === 'active'; }));
+      }
+    });
     const origin = {};
     moving.forEach(function (c) { origin[c.id] = { x: c.mapPos.x, y: c.mapPos.y }; });
     drag = {
@@ -533,6 +544,8 @@
       startX: e.clientX,
       startY: e.clientY,
       pressTarget: e.target,
+      shift: e.shiftKey,
+      group: group,
       started: false,
       origin: origin,
       movingSet: new Set(Object.keys(origin)),
@@ -549,6 +562,7 @@
       if (Math.hypot(dx, dy) < dragThreshold(drag.pointerType)) return;
       drag.started = true;
       lastCardTap = null;
+      if (!drag.group && multi.length) multi = []; // 選択に入っていないカードをつかんだら複数選択は解除
       selectedId = drag.id;
     }
     // 吸着中は、つかんだカードの左上がグリッドに乗るようにずらす（子孫も同じだけ動く）
@@ -568,7 +582,7 @@
     AP.Tray.setDropHighlight(drag.overTray);
     if (drag.overTimeline) {
       AP.Timeline.autoscroll(e.clientX);
-      AP.Timeline.showInsert(e.clientX, drag.id);
+      AP.Timeline.showInsert(e.clientX, drag.group ? new Set(drag.group) : drag.id);
     } else {
       AP.Timeline.hideInsert();
     }
@@ -588,6 +602,8 @@
       return render();
     }
     if (!d.started) {
+      // Shift＋タップ（または複数選択モード）：選択に足す／外す
+      if (d.shift || multiMode) return toggleMulti(d.id);
       // タップ：選択。素早く2回でテキスト編集
       const now = performance.now();
       if (lastCardTap && lastCardTap.id === d.id && now - lastCardTap.t < C.DOUBLE_TAP_MS) {
@@ -602,6 +618,7 @@
       }
       return;
     }
+    if (d.group) return endGroupDrag(d, e);
     if (d.overTray) {
       Store.moveCards(d.origin); // 戻したとき元の位置に出るように
       peel(d.id);
@@ -621,6 +638,48 @@
       render();
     }
     document.dispatchEvent(new CustomEvent('ap:select', { detail: { id: selectedId } }));
+  }
+
+  // ---- 複数選択 ----
+  function toggleMulti(id) {
+    if (!multi.length && selectedId && selectedId !== id) multi = [selectedId];
+    const i = multi.indexOf(id);
+    if (i >= 0) multi.splice(i, 1); else multi.push(id);
+    selectedId = multi.length ? multi[multi.length - 1] : null;
+    if (multi.length === 1) multi = [];   // 1枚だけならふつうの選択
+    render();
+    document.dispatchEvent(new CustomEvent('ap:select', { detail: { id: selectedId, multi: multi.slice() } }));
+  }
+
+  function clearMulti() {
+    if (!multi.length) return;
+    multi = [];
+    render();
+    document.dispatchEvent(new CustomEvent('ap:select', { detail: { id: selectedId, multi: [] } }));
+  }
+
+  // まとめてドラッグして離したとき
+  function endGroupDrag(d, e) {
+    const ids = d.group;
+    if (d.overTray) {
+      Store.moveCards(d.origin);
+      ids.forEach(function (id) { Store.peel(id); });
+      multi = [];
+      selectedId = null;
+      U.toast(ids.length + '枚を保留トレイへ剥がしました');
+    } else if (d.overTimeline) {
+      // 選んだ順にタイムラインへ（すでに並んでいるものもこの流れに入れ直す）
+      const beforeId = AP.Timeline.beforeIdAt(e.clientX, new Set(ids));
+      Store.moveCards(d.origin);
+      Store.adoptMany(ids, beforeId);
+      U.toast(ids.length + '枚を選んだ順にタイムラインへ並べました');
+    } else if (d.target) {
+      let ng = 0;
+      ids.forEach(function (id) { if (!Store.setParent(id, d.target)) ng++; else if (C.AUTO_PLACE_ON_PARENT) autoPlace(id, d.target); });
+      if (ng) U.toast(ng + '枚は自分の子孫の下には付けられませんでした');
+    }
+    render();
+    document.dispatchEvent(new CustomEvent('ap:select', { detail: { id: selectedId, multi: multi.slice() } }));
   }
 
   // ---- 背景（パン・ピンチ・ダブルタップ・線のタップ） ----
@@ -707,7 +766,7 @@
       createAt(clientToWorld(e.clientX, e.clientY));
     } else {
       lastBgTap = { t: now, x: e.clientX, y: e.clientY };
-      select(null);
+      if (!multiMode) select(null);
     }
   }
 
@@ -787,6 +846,24 @@
     peel: peel,
     attachTo: attachTo,
     autoPlace: autoPlace,
+    multiSelected: function () { return multi.slice(); },
+    clearMulti: clearMulti,
+    toggleMulti: toggleMulti,
+    setMultiMode: function (on) { multiMode = !!on; if (!on) clearMulti(); },
+    multiMode: function () { return multiMode; },
+    // 複数選択していればその全部、なければ選択中の1枚を剥がす
+    peelSelection: function () {
+      if (multi.length) {
+        const ids = multi.slice();
+        multi = [];
+        selectedId = null;
+        ids.forEach(function (id) { Store.peel(id); });
+        U.toast(ids.length + '枚を保留トレイへ剥がしました');
+        document.dispatchEvent(new CustomEvent('ap:select', { detail: { id: null, multi: [] } }));
+      } else if (selectedId) {
+        peel(selectedId);
+      }
+    },
     cardH: cardH,
     adoptAgain: adoptAgain,
     freeSpot: freeSpot,
