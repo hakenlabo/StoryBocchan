@@ -184,6 +184,12 @@
         MapView.select(null);
       } else if ((e.metaKey || e.ctrlKey) && e.key === '0') {
         e.preventDefault(); MapView.fit();
+      } else if (!mod && !e.altKey && document.body.dataset.view === 'map' && e.key.toLowerCase() === 'l') {
+        // L：ツリーに整列（⌘Zで戻せる）
+        e.preventDefault(); MapView.arrangeTree(); MapView.fit();
+      } else if (!mod && !e.altKey && document.body.dataset.view === 'map' && e.key.toLowerCase() === 'g') {
+        // G：グリッドに吸着のオン／オフ
+        e.preventDefault(); MapView.setSnap(!MapView.snapOn());
       }
     });
   }

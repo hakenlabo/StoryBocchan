@@ -794,3 +794,5 @@ body[data-view="outline"] .toolbar > * { visibility: hidden; }
 .tl-note.empty { opacity: 0; }
 .tl-card:hover .tl-note.empty, .tl-card.selected .tl-note.empty { opacity: .6; }
 .dialog-textarea { width: 100%; font: inherit; font-size: 15px; padding: 8px; border: 1px solid var(--border); border-radius: 6px; resize: vertical; margin-bottom: 12px; }
+
+.arrange-menu kbd { display: inline-block; min-width: 18px; padding: 0 5px; margin-left: 4px; font: 11px/16px ui-monospace, Menlo, monospace; text-align: center; color: var(--sub); background: #f1f3f6; border: 1px solid var(--border); border-radius: 4px; }
