@@ -13,7 +13,7 @@
     <nav class="view-tabs">
       <button class="tab active" type="button" data-view="map" title="マップと、下にタイムライン">マップ</button>
       <button class="tab" type="button" data-view="timeline" title="タイムラインを大きく表示">タイムライン</button>
-      <button class="tab soon" type="button" data-view="vconte" title="ステップ4で追加予定">Vコンテ<small>準備中</small></button>
+      <button class="tab" type="button" data-view="vconte" title="タイムラインどおりに再生">Vコンテ</button>
     </nav>
     <div class="settings">
       <label>fps <select id="setting-fps"></select></label>
@@ -68,6 +68,29 @@
       </div>
       <div id="tl-scroll" class="tl-scroll"><div id="tl-track" class="tl-track"></div></div>
     </section>
+
+    <section id="vconte" class="vconte">
+      <div id="vc-stage" class="vc-stage">
+        <canvas id="vc-canvas"></canvas>
+        <p id="vc-empty" class="vc-empty" hidden>タイムラインにカードを採用すると、ここで再生できます</p>
+      </div>
+      <div id="vc-bar" class="vc-bar" title="タップ・ドラッグで移動">
+        <div id="vc-segs" class="vc-segs"></div>
+        <div id="vc-playhead" class="vc-playhead"></div>
+      </div>
+      <div class="vc-controls">
+        <button id="vc-start" type="button" title="頭へ（Home）">⏮</button>
+        <button id="vc-prev" type="button" title="前のカット（Shift+←）">◀◀</button>
+        <button id="vc-play" class="primary" type="button" title="再生／一時停止（スペース）">▶ 再生</button>
+        <button id="vc-next" type="button" title="次のカット（Shift+→）">▶▶</button>
+        <button id="vc-loop" type="button" title="最後まで行ったら頭から">⟲ ループ</button>
+        <span id="vc-time" class="vc-time"></span>
+        <span id="vc-cut" class="vc-cut"></span>
+        <label class="vc-opt"><input id="vc-show-cutno" type="checkbox"> カット番号</label>
+        <label class="vc-opt"><input id="vc-show-text" type="checkbox"> テキスト</label>
+        <button id="vc-draw" type="button" title="いま表示しているカットを描画パネルで開く">✎ このカットを描く</button>
+      </div>
+    </section>
   </main>
 
   <div id="draw-panel" class="draw-panel" hidden>
@@ -100,6 +123,7 @@
   <script src="js/tray.js"></script>
   <script src="js/timeline.js"></script>
   <script src="js/draw.js"></script>
+  <script src="js/vconte.js"></script>
   <script src="js/app.js"></script>
 </body>
 </html>

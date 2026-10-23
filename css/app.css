@@ -471,3 +471,52 @@ body[data-view="timeline"] .toolbar > :not(.keep) { visibility: hidden; }
   -webkit-user-select: none;
   -webkit-touch-callout: none;
 }
+
+/* ---- Vコンテ ---- */
+.vconte { display: none; }
+body[data-view="vconte"] .workspace-main,
+body[data-view="vconte"] .timeline { display: none; }
+body[data-view="vconte"] .vconte { flex: 1; min-height: 0; display: flex; flex-direction: column; background: #2b2d31; }
+body[data-view="vconte"] .toolbar > * { visibility: hidden; }
+.vc-stage { position: relative; flex: 1; min-height: 0; display: flex; align-items: center; justify-content: center; overflow: hidden; }
+#vc-canvas { background: #fff; box-shadow: 0 4px 24px rgba(0,0,0,.4); }
+.vc-empty { position: absolute; color: #fff; background: rgba(0,0,0,.5); padding: 10px 16px; border-radius: 8px; }
+.vc-bar {
+  position: relative;
+  height: 30px;
+  margin: 0 16px;
+  border-radius: 4px;
+  background: #3a3d42;
+  cursor: pointer;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+}
+.vc-segs { display: flex; height: 100%; }
+.vc-seg {
+  flex-basis: 0;
+  min-width: 2px;
+  overflow: hidden;
+  border-right: 1px solid #2b2d31;
+  color: #aab0b8;
+  font-size: 11px;
+  line-height: 30px;
+  padding-left: 4px;
+  background: #4a4e55;
+}
+.vc-seg.current { background: #5b7fc4; color: #fff; }
+.vc-playhead { position: absolute; top: -4px; bottom: -4px; width: 2px; margin-left: -1px; background: #ff5a5a; pointer-events: none; }
+.vc-controls {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 10px 16px;
+  color: #e6e8eb;
+}
+.vc-controls button { min-height: 34px; background: #44474d; color: #fff; border-color: #55595f; }
+.vc-controls button.active { background: #5b7fc4; border-color: #5b7fc4; }
+.vc-controls .primary { min-width: 110px; background: var(--accent); border-color: var(--accent); }
+.vc-time { font-variant-numeric: tabular-nums; margin-left: 8px; }
+.vc-cut { flex: 1; min-width: 60px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: #aab0b8; }
+.vc-opt { display: flex; align-items: center; gap: 4px; font-size: 13px; }

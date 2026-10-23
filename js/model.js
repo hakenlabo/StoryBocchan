@@ -27,13 +27,17 @@
     }, props || {});
   }
 
+  function defaultSettings() {
+    return { fps: C.DEFAULT_FPS, aspect: C.DEFAULT_ASPECT, vcShowCutNo: C.VC_SHOW_CUT_NO, vcShowText: C.VC_SHOW_TEXT };
+  }
+
   function newProject() {
     const now = Date.now();
     const p = {
       version: PROJECT_VERSION,
       id: U.uid(),
       title: '無題の作品',
-      settings: { fps: C.DEFAULT_FPS, aspect: C.DEFAULT_ASPECT },
+      settings: defaultSettings(),
       cards: [],
       createdAt: now,
       updatedAt: now,
@@ -45,7 +49,7 @@
   // 古い形式や欠けたフィールドを補う
   function normalize(p) {
     p.version = p.version || PROJECT_VERSION;
-    p.settings = Object.assign({ fps: C.DEFAULT_FPS, aspect: C.DEFAULT_ASPECT }, p.settings || {});
+    p.settings = Object.assign(defaultSettings(), p.settings || {});
     p.cards = (p.cards || []).map(function (c) {
       const base = makeCard();
       const card = Object.assign(base, c);

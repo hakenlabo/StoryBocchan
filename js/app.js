@@ -66,10 +66,12 @@
     document.querySelectorAll('.view-tabs .tab').forEach(function (btn) {
       btn.addEventListener('click', function () {
         const v = btn.dataset.view;
-        if (v === 'vconte') return U.toast('Vコンテはステップ4で追加予定です');
+        if (MapView.isEditing()) MapView.finishEdit();
+        if (v !== 'vconte') AP.Vconte.hide();
         document.body.dataset.view = v;
         document.querySelectorAll('.view-tabs .tab').forEach(function (b) { b.classList.toggle('active', b === btn); });
-        AP.Timeline.render();
+        if (v === 'vconte') AP.Vconte.show();
+        else AP.Timeline.render();
       });
     });
   }
@@ -78,6 +80,7 @@
     document.addEventListener('keydown', function (e) {
       const tag = (e.target.tagName || '').toLowerCase();
       if (tag === 'input' || tag === 'textarea' || tag === 'select' || MapView.isEditing() || AP.Draw.isOpen()) return;
+      if (document.body.dataset.view === 'vconte') return AP.Vconte.onKey(e);
       const sel = MapView.selected();
       if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
         e.preventDefault(); MapView.addNextCard();
@@ -115,6 +118,7 @@
     AP.Tray.init();
     AP.Timeline.init();
     AP.Draw.init();
+    AP.Vconte.init();
     setupHeader();
     setupTabs();
     setupToolbar();
