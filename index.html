@@ -25,13 +25,14 @@
   <div class="toolbar">
     <button id="btn-add" type="button" title="画面の真ん中にカードを作る（空白をダブルクリックでも作れます）">＋ カード</button>
     <button id="btn-add-child" type="button" title="選択中のカードに子カードを足す（Tab）">＋ 子カード</button>
+    <button id="btn-draw" type="button" title="選択中のカードに絵を描く（カードの絵の部分をダブルクリックでも開けます）">✎ 描く</button>
     <button id="btn-peel" type="button" title="選択中のカードを保留トレイへ（Delete）">剥がす</button>
     <span class="sep"></span>
     <button id="btn-zoom-out" type="button" title="縮小">－</button>
     <span id="zoom-label" class="zoom-label">100%</span>
     <button id="btn-zoom-in" type="button" title="拡大">＋</button>
     <button id="btn-fit" type="button" title="全体を表示（⌘/Ctrl+0）">全体表示</button>
-    <span class="hint">空白をダブルクリック・⌘+Enterでカード ／ カードを別カードに重ねると子に ／ 線をクリックで切り離し</span>
+    <span class="hint">空白をダブルクリック・⌘+Enterでカード ／ 絵の部分をダブルクリックで描く ／ 重ねると子に ／ 線をクリックで切り離し</span>
   </div>
 
   <main class="workspace">
@@ -69,6 +70,25 @@
     </section>
   </main>
 
+  <div id="draw-panel" class="draw-panel" hidden>
+    <div class="draw-bar">
+      <button id="draw-prev" type="button">◀</button>
+      <span id="draw-title" class="draw-title"></span>
+      <button id="draw-next" type="button">▶</button>
+      <span class="sep"></span>
+      <button type="button" data-tool="pen" title="ペン（B）">ペン</button>
+      <button type="button" data-tool="eraser" title="消しゴム（E）">消しゴム</button>
+      <span id="draw-colors" class="draw-group"></span>
+      <span id="draw-sizes" class="draw-group"></span>
+      <span class="sep"></span>
+      <button id="draw-undo" type="button" title="取り消し（⌘/Ctrl+Z）">↶ 取り消し</button>
+      <button id="draw-redo" type="button" title="やり直し（⌘/Ctrl+Shift+Z）">↷ やり直し</button>
+      <button id="draw-clear" type="button">全部消す</button>
+      <button id="draw-close" class="primary" type="button" title="閉じる（Esc）">完了</button>
+    </div>
+    <div id="draw-stage" class="draw-stage"><canvas id="draw-canvas"></canvas></div>
+  </div>
+
   <div id="toast" class="toast" role="status"></div>
 
   <!-- 読み込み順に意味があります（ES Modulesは使わない方針） -->
@@ -79,6 +99,7 @@
   <script src="js/map.js"></script>
   <script src="js/tray.js"></script>
   <script src="js/timeline.js"></script>
+  <script src="js/draw.js"></script>
   <script src="js/app.js"></script>
 </body>
 </html>

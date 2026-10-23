@@ -115,6 +115,12 @@
       el.classList.toggle('drop-target', c.id === dropTargetId);
       el.classList.toggle('dragging', !!(drag && drag.started && drag.movingSet.has(c.id)));
       // タイムラインに採用済みなら「#番号 尺」を出す
+      const thumb = el.querySelector('.card-thumb');
+      const url = AP.Draw.thumbURL(c.strokes, Store.settings().aspect);
+      if (thumb.dataset.url !== url) {
+        thumb.dataset.url = url;
+        thumb.style.backgroundImage = url ? 'url(' + url + ')' : '';
+      }
       const badge = el.querySelector('.card-badge');
       const ti = tlIndex.get(c.id);
       el.classList.toggle('adopted', ti !== undefined);
@@ -385,6 +391,7 @@
       id: id,
       startX: e.clientX,
       startY: e.clientY,
+      pressTarget: e.target,
       started: false,
       origin: origin,
       movingSet: new Set(Object.keys(origin)),
@@ -438,7 +445,9 @@
       if (lastCardTap && lastCardTap.id === d.id && now - lastCardTap.t < C.DOUBLE_TAP_MS) {
         lastCardTap = null;
         select(d.id);
-        startEdit(d.id);
+        // 絵の部分なら描画パネル、文字の部分ならテキスト編集
+        if (d.pressTarget.closest('.card-thumb')) AP.Draw.open(d.id);
+        else startEdit(d.id);
       } else {
         lastCardTap = { id: d.id, t: now };
         select(d.id);

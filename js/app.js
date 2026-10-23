@@ -43,6 +43,8 @@
   function setupToolbar() {
     const btnChild = document.getElementById('btn-add-child');
     const btnPeel = document.getElementById('btn-peel');
+    const btnDraw = document.getElementById('btn-draw');
+    btnDraw.addEventListener('click', function () { if (MapView.selected()) AP.Draw.open(MapView.selected()); });
     document.getElementById('btn-add').addEventListener('click', function () { MapView.createAtCenter(); });
     btnChild.addEventListener('click', function () { MapView.addChildOfSelected(); });
     btnPeel.addEventListener('click', function () { MapView.peel(MapView.selected()); });
@@ -53,6 +55,7 @@
     const update = function () {
       const has = !!MapView.selected();
       btnChild.disabled = !has;
+      btnDraw.disabled = !has;
       btnPeel.disabled = !has;
     };
     document.addEventListener('ap:select', update);
@@ -74,7 +77,7 @@
   function setupKeys() {
     document.addEventListener('keydown', function (e) {
       const tag = (e.target.tagName || '').toLowerCase();
-      if (tag === 'input' || tag === 'textarea' || tag === 'select' || MapView.isEditing()) return;
+      if (tag === 'input' || tag === 'textarea' || tag === 'select' || MapView.isEditing() || AP.Draw.isOpen()) return;
       const sel = MapView.selected();
       if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
         e.preventDefault(); MapView.addNextCard();
@@ -111,6 +114,7 @@
     MapView.init();
     AP.Tray.init();
     AP.Timeline.init();
+    AP.Draw.init();
     setupHeader();
     setupTabs();
     setupToolbar();

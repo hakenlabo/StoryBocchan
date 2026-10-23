@@ -205,6 +205,14 @@
     emit('restore');
   };
 
+  // 絵。配列ごと差し替える（サムネイルのキャッシュは配列の同一性で判定している）
+  S.setStrokes = function (id, strokes) {
+    const card = byId.get(id);
+    if (!card) return;
+    card.strokes = strokes;
+    emit('strokes');
+  };
+
   // ---- タイムライン ----
   // timelineOrder はマップのツリーとは無関係。トレイ中のカードも番号を持ち続け、戻すと元の並びに入る
 

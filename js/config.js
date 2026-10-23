@@ -47,6 +47,28 @@ AP.CONFIG = {
   TL_DROP_ON_MAP_UNADOPTS: true, // タイムラインのカードをマップへドラッグで戻すと「外す」
   MIN_DURATION_FRAMES: 1,
 
+  // ---- 描画パネル ----
+  // 線の座標は「絵の幅＝DRAW_BASE_W」の単位で保存する（画面の大きさに左右されない）
+  DRAW_BASE_W: 1000,
+  DRAW_COLORS: [
+    { name: '黒', value: '#1d1d1f' },
+    { name: '赤', value: '#e03131' },
+    { name: '青', value: '#1c6fe0' },
+  ],
+  DRAW_SIZES: [                // ペンの太さ（DRAW_BASE_W に対する太さ）
+    { name: '細', value: 3 },
+    { name: '中', value: 6 },
+    { name: '太', value: 12 },
+  ],
+  DRAW_DEFAULT_SIZE_INDEX: 1,
+  ERASER_SIZE: 40,
+  DRAW_MIN_PRESSURE_RATIO: 0.25, // 筆圧ゼロのときの太さの割合（1にすると筆圧無視）
+  DRAW_NONPEN_PRESSURE: 0.7,     // マウス・指は筆圧がないので、この値で描く
+  DRAW_PEN_ONLY_AFTER_PEN: true, // Apple Pencilを一度使ったら、指では描かない（手のひら誤爆対策）
+  DRAW_MIN_POINT_DIST: 1.5,      // これより近い点は記録しない（データを軽くする）
+  DRAW_UNDO_LIMIT: 100,
+  DRAW_THUMB_W: 320,             // サムネイル画像の幅（px）
+
   // ---- 保存 ----
   AUTOSAVE_DELAY_MS: 500,      // 最後の変更からこの時間で自動保存
 

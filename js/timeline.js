@@ -13,6 +13,7 @@
   let press = null;        // カードを押している／ドラッグ中／伸縮中
   let durEditId = null;    // 尺を入力中のカード
   let pendingRender = false;
+  let lastTap = null;      // ダブルタップ判定
 
   function pxPerFrame() { return C.TL_PX_PER_SEC * zoom / Store.settings().fps; }
 
@@ -82,6 +83,8 @@
         '<div class="tl-remove" title="タイムラインから外す（カードは消えません）">×</div>' +
         '<div class="tl-resize" title="ドラッグで尺を変える"></div>';
       el.querySelector('.tl-text').textContent = c.text || '（無題）';
+      const url = AP.Draw.thumbURL(c.strokes, Store.settings().aspect);
+      if (url) el.querySelector('.tl-thumb').style.backgroundImage = 'url(' + url + ')';
       track.appendChild(el);
       start += c.duration;
     });
@@ -283,7 +286,15 @@
         AP.MapView.select(p.id);
         startDurEdit(p.id);
       } else {
-        AP.MapView.select(p.id);
+        // ダブルタップで描画パネル
+        const now = performance.now();
+        if (lastTap && lastTap.id === p.id && now - lastTap.t < C.DOUBLE_TAP_MS) {
+          lastTap = null;
+          AP.Draw.open(p.id);
+        } else {
+          lastTap = { id: p.id, t: now };
+          AP.MapView.select(p.id);
+        }
       }
       return;
     }
