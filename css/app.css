@@ -751,3 +751,9 @@ body[data-view="outline"] .toolbar > * { visibility: hidden; }
 .vc-seq-main { flex: 1 1 100%; }
 .vc-seq-name { white-space: normal; word-break: break-word; }
 .vc-seq-meta { flex: 1; padding-left: 22px; }
+
+/* ---- トレイの削除 ---- */
+.tray-delete { font-size: 12px; padding: 2px 6px; color: var(--danger); }
+.tray-clear { margin-left: auto; font-size: 11px; padding: 2px 6px; color: var(--danger); display: none; }
+.tray.has-items .tray-clear { display: inline-block; }
+.tray.collapsed .tray-clear { display: none; }

@@ -22,7 +22,8 @@
       li.innerHTML =
         '<div class="tray-text"></div>' +
         (n > 0 ? '<span class="tray-badge" title="一緒に剥がした子カード">+' + n + '</span>' : '') +
-        '<button class="tray-restore" type="button">戻す</button>';
+        '<button class="tray-restore" type="button">戻す</button>' +
+        '<button class="tray-delete" type="button" title="削除（⌘Zで戻せます）">削除</button>';
       const t = li.querySelector('.tray-text');
       t.textContent = c.text || '（無題）';
       t.classList.toggle('empty', !c.text);
@@ -30,7 +31,20 @@
         Store.restore(c.id);
         U.toast('マップに戻しました');
       });
+      li.querySelector('.tray-delete').addEventListener('click', function () {
+        confirmDelete([c.id], '「' + (c.text || '（無題）') + '」' + (n > 0 ? 'と、一緒に剥がした' + n + '枚' : '') + 'を削除しますか？');
+      });
       listEl.appendChild(li);
+    });
+  }
+
+  function confirmDelete(rootIds, title) {
+    U.choose(title, '削除しても、すぐなら ⌘Z（↶ボタン）で戻せます。このカードを使った連動カットも消えます。', [
+      { label: '削除する', value: 'delete' },
+    ]).then(function (v) {
+      if (v !== 'delete') return;
+      const n = Store.deleteTrayGroups(rootIds);
+      U.toast(n + '枚を削除しました', { label: '元に戻す', ms: 6000, fn: function () { Store.undo(); } });
     });
   }
 
@@ -90,6 +104,12 @@
     listEl = document.getElementById('tray-list');
     countEl = document.getElementById('tray-count');
 
+    document.getElementById('tray-clear').addEventListener('click', function () {
+      const roots = Store.trayRoots();
+      if (!roots.length) return;
+      const total = roots.reduce(function (s, r) { return s + Store.trayGroup(r.id).length; }, 0);
+      confirmDelete(roots.map(function (r) { return r.id; }), '保留トレイのカード' + total + '枚をすべて削除しますか？');
+    });
     document.getElementById('tray-toggle').addEventListener('click', function () {
       trayEl.classList.toggle('collapsed');
     });

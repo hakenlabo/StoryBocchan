@@ -383,7 +383,7 @@
   function renderSceneSelect() {
     const ids = Store.scenes();
     if (scene && ids.indexOf(scene) < 0) ids.push(scene);
-    const key = ids.map(function (id) { return id + ':' + Store.sceneName(id); }).join('|') + '#' + scene;
+    const key = ids.map(function (id) { return id + ':' + Store.sceneName(id) + ':' + Store.timelineCards(id).length; }).join('|') + '#' + scene;
     if (sceneSel.dataset.key === key) return;
     sceneSel.dataset.key = key;
     sceneSel.innerHTML = '';

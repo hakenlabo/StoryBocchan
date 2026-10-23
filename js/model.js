@@ -106,6 +106,7 @@
   let lastEmitAt = 0;
   let applying = false;
   let mergeNext = false;    // 次の変更は今の操作に含める
+  let version = 0;          // 変更（取り消し・やり直しを含む）のたびに増える
 
   function snap() {
     return {
@@ -132,6 +133,7 @@
   }
 
   function record(reason) {
+    version++;
     if (applying || reason === 'load' || reason === 'history') return;
     const now = Date.now();
     const g = groupOf(reason);
@@ -190,6 +192,7 @@
   S.checkpoint = function () { closeGroup(); lastEmitAt = 0; };
   // 次の変更を、直前の操作と1回にまとめる（カードを作ってすぐ最初の文字を入れたとき）
   S.mergeNext = function () { mergeNext = true; };
+  S.version = function () { return version; };
   S.canUndo = function () { return pending || undoStack.length > 0; };
   S.canRedo = function () { return redoStack.length > 0; };
 
@@ -374,6 +377,20 @@
     return project.cards.filter(function (c) {
       return c.status === 'tray' && c.trayInfo && c.trayInfo.rootId === rootId;
     });
+  };
+
+  // トレイのまとまりを本当に消す（連動カットも）。取り消し（⌘Z）なら戻せる
+  S.deleteTrayGroups = function (rootIds) {
+    const gone = new Set();
+    rootIds.forEach(function (rid) { S.trayGroup(rid).forEach(function (c) { gone.add(c.id); }); });
+    if (!gone.size) return 0;
+    project.cards = project.cards.filter(function (c) { return !gone.has(c.id) && !(c.linkOf && gone.has(c.linkOf)); });
+    project.cards.forEach(function (c) {
+      if (c.parentId && gone.has(c.parentId)) c.parentId = null; // 残ったカードの親が消えたら、いちばん上の階層へ
+    });
+    reindex();
+    emit('remove');
+    return gone.size;
   };
 
   // 戻す。newPos を渡すと先頭カードをそこへ置き、まとまり全体を同じだけずらす

@@ -50,6 +50,8 @@
     el.textContent = msg;
     el.classList.toggle('has-action', !!action);
     if (action) {
+      const ver = AP.Store && AP.Store.version ? AP.Store.version() : null;
+      el.dataset.ver = ver === null ? '' : String(ver);
       const b = document.createElement('button');
       b.type = 'button';
       b.className = 'toast-action';

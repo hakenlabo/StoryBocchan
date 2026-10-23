@@ -145,6 +145,9 @@
     Store.subscribe(function (reason) {
       update();
       if (reason === 'history') refreshHeaderAndView(false);
+      // 「元に戻す」付きのお知らせは、ほかの変更があったら引っ込める（違う操作を戻してしまわないように）
+      const t = document.getElementById('toast');
+      if (t.classList.contains('has-action') && t.dataset.ver !== String(Store.version())) t.classList.remove('show', 'has-action');
     });
     update();
   }
