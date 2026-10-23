@@ -71,6 +71,8 @@
     const btnCopy = document.getElementById('btn-copy');
     btnCopy.addEventListener('click', function () { AP.Clipboard.copyButton(); });
     document.getElementById('btn-paste').addEventListener('click', function () { AP.Clipboard.pasteButton(); });
+    const btnCut = document.getElementById('btn-cut');
+    btnCut.addEventListener('click', function () { AP.Clipboard.cutButton(); });
     document.getElementById('btn-fit').addEventListener('click', function () { MapView.fit(); });
     // 整列メニュー
     const menu = document.getElementById('arrange-menu');
@@ -98,6 +100,7 @@
       btnChild.disabled = !has;
       btnDraw.disabled = !has;
       btnCopy.disabled = !has;
+      btnCut.disabled = !has;
       btnPeel.disabled = !has;
     };
     document.addEventListener('ap:select', update);

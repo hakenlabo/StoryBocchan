@@ -538,7 +538,7 @@ body[data-view="vconte"] .toolbar > * { visibility: hidden; }
 body[data-view="outline"] .workspace-main,
 body[data-view="outline"] .timeline { display: none; }
 body[data-view="outline"] .outline { flex: 1; min-height: 0; display: flex; flex-direction: column; background: var(--panel); }
-body[data-view="outline"] .toolbar > :not(#btn-copy):not(#btn-paste) { visibility: hidden; }
+body[data-view="outline"] .toolbar > * { visibility: hidden; }
 .ol-bar {
   display: flex;
   align-items: center;

@@ -22,8 +22,9 @@
   // ------------------------------------------------------------
   // コピー
   // ------------------------------------------------------------
-  function copyCards() {
-    const selId = AP.MapView.selected();
+  // id を省略すると選択中のカード
+  function copyCards(id) {
+    const selId = id || AP.MapView.selected();
     const root = selId ? Store.source(Store.get(selId)) : null;
     if (!root || root.status !== 'active') return null;
     const items = [];
@@ -71,8 +72,11 @@
     return sel && sel.status === 'active' ? sel : null;
   }
 
-  function pasteCards(items) {
-    const parent = pasteTarget();
+  // opts.parentId / opts.index を渡すと、その親の index 番目に兄弟として入れる（箇条書きの「この行の下に」）
+  function pasteCards(items, opts) {
+    opts = opts || {};
+    const inTree = opts.parentId !== undefined;
+    const parent = inTree ? (opts.parentId ? Store.get(opts.parentId) : null) : pasteTarget();
     const center = AP.MapView.viewCenter();
     const created = [];
     items.forEach(function (it, i) {
@@ -88,8 +92,9 @@
     });
     // 親の右に並べる（子孫は相対位置のままついてくる）
     if (parent) AP.MapView.autoPlace(created[0].id, parent.id);
-    AP.MapView.select(created[0].id);
-    U.toast((parent ? '選択中のカードの子として' : '') + created.length + '枚貼り付けました');
+    if (inTree && opts.index !== undefined) Store.moveInTree(created[0].id, parent ? parent.id : null, opts.index);
+    if (!inTree) AP.MapView.select(created[0].id);
+    U.toast((parent && !inTree ? '選択中のカードの子として' : '') + created.length + '枚貼り付けました');
     return created;
   }
 
@@ -198,6 +203,8 @@
   }
 
   function onCopy(e) {
+    // テキスト欄でふつうに文字をコピーしたら、自分のコピーより新しいものとして扱う
+    if (!e.defaultPrevented && isTextField(e.target) && clip) clip.stale = true;
     if (blocked(e)) return;
     let c = clip;
     if (Date.now() - keyCopyAt > 300) {
@@ -250,8 +257,36 @@
     window.addEventListener('blur', function () { if (clip) clip.stale = true; });
   }
 
+  // 箇条書きの行（カードと子孫）のコピー・切り取り・貼り付け
+  function copyRow(id) {
+    const c = copyCards(id);
+    if (!c) return null;
+    keyCopyAt = Date.now();
+    syncSystem(c);
+    return c;
+  }
+
+  // 貼り付けられた文字が、自分でコピーしたカードか
+  function isOwnCards(text) {
+    return !!clip && clip.kind === 'cards' && (!text || text === clip.sig || (!clip.synced && !clip.stale));
+  }
+
   AP.Clipboard = {
     init: init,
+    copyRow: copyRow,
+    isOwnCards: isOwnCards,
+    pasteCardsAt: function (parentId, index) {
+      if (!clip || clip.kind !== 'cards') return [];
+      return pasteCards(clip.items, { parentId: parentId, index: index });
+    },
+    sigOf: function () { return clip ? clip.sig : ''; },
+    // 切り取り：コピーして保留トレイへ（取り消しで戻せる）
+    cutButton: function () {
+      const id = AP.MapView.selected();
+      if (!id) return U.toast('先にカードを選んでください');
+      const c = copyRow(id);
+      if (c) { AP.MapView.peel(id); U.toast('切り取りました（' + c.items.length + '枚。保留トレイにもあります）'); }
+    },
     copyButton: copyButton,
     pasteButton: pasteButton,
     parseLines: parseLines,

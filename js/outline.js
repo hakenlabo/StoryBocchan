@@ -16,6 +16,7 @@
   let focusAfter = null;    // 次に作り直したときにフォーカスする { id, caret }
   let lastFocusedId = null;
   const newIds = new Set(); // ここで作った行（空のまま離れたら消す）
+  let lastKeyCopy = 0;      // キーで行をコピーした時刻（copyイベントとの二重処理を防ぐ）
 
   function isVisible() { return document.body.dataset.view === 'outline'; }
 
@@ -181,12 +182,58 @@
   // ------------------------------------------------------------
   // 入力
   // ------------------------------------------------------------
+  // 行ごとのコピー・切り取り（文字を選んでいないときだけ。選んでいればふつうの文字のコピー）
+  function copyRow(id) {
+    const c = AP.Clipboard.copyRow(id);
+    if (c) U.toast('行をコピーしました（' + c.items.length + '行）');
+    return c;
+  }
+
+  function cutRow(id) {
+    const c = AP.Clipboard.copyRow(id);
+    if (!c) return;
+    const ids = visibleIds();
+    const after = ids.slice(ids.indexOf(id) + 1).find(function (x) { return x === NEW_ROW || !Store.isAncestorOrSelf(id, x); });
+    const before = ids[ids.indexOf(id) - 1];
+    focusAfter = after && after !== NEW_ROW ? { id: after, caret: 0 } : (before ? { id: before, caret: null } : { id: NEW_ROW, caret: 0 });
+    newIds.delete(id);
+    AP.MapView.peel(id);
+    U.toast('行を切り取りました（' + c.items.length + '行。保留トレイにもあります）');
+  }
+
+  // この行の下に、コピーした行を同じ階層で入れる
+  function pasteRowsAfter(id) {
+    let parentId = null, index = Store.treeChildren(null).length, emptyId = null;
+    if (id && id !== NEW_ROW && Store.get(id)) {
+      const x = context(id);
+      parentId = x.parentId;
+      index = x.idx + 1;
+      if (!x.card.text && removable(x.card)) { emptyId = id; index = x.idx; }
+    }
+    if (emptyId) { newIds.delete(emptyId); Store.removeCard(emptyId); }
+    const created = AP.Clipboard.pasteCardsAt(parentId, index);
+    if (created.length) {
+      focusAfter = { id: created[0].id, caret: null };
+      render();
+    }
+    return created;
+  }
+
+  function hasSelection(ta) { return ta.selectionStart !== ta.selectionEnd; }
+
   function onKeyDown(e) {
     const ta = e.target;
     if (!ta.classList.contains('ol-text')) return;
     e.stopPropagation();
     if (e.isComposing || e.keyCode === 229) return; // 日本語変換中
     const id = ta.closest('.ol-row').dataset.id;
+
+    const mod = e.metaKey || e.ctrlKey;
+    if (mod && !e.altKey && id !== NEW_ROW && !hasSelection(ta)) {
+      const k = e.key.toLowerCase();
+      if (k === 'c') { e.preventDefault(); copyRow(id); return; }
+      if (k === 'x') { e.preventDefault(); cutRow(id); return; }
+    }
 
     if (id === NEW_ROW) {
       if (e.key === 'Enter' && !e.shiftKey) {
@@ -291,11 +338,17 @@
     }
   }
 
-  // 複数行の貼り付け：1行＝1行（字下げも読む）として、今の行の後ろに入れる
+  // 貼り付け：コピーした行ならこの行の下へ。複数行の文字は1行＝1行（字下げも読む）として今の行の後ろへ
   function onPaste(e) {
     const ta = e.target;
     if (!ta.classList || !ta.classList.contains('ol-text')) return;
     const text = e.clipboardData ? e.clipboardData.getData('text/plain') : '';
+    if (AP.Clipboard.isOwnCards(text) && !hasSelection(ta)) {
+      e.preventDefault();
+      const created = pasteRowsAfter(ta.closest('.ol-row').dataset.id);
+      if (created.length) U.toast(created.length + '行を貼り付けました');
+      return;
+    }
     if (text.indexOf('\n') === -1) return; // 1行ならふつうに貼る
     e.preventDefault();
     const lines = AP.Clipboard.parseLines(text);
@@ -323,11 +376,21 @@
       b.addEventListener('pointerdown', function (e) { e.preventDefault(); });
       b.addEventListener('click', function () {
         const id = lastFocusedId;
+        if (b.dataset.ol === 'paste' && id === NEW_ROW) {
+          if (AP.Clipboard.isOwnCards('')) pasteRowsAfter(NEW_ROW); else U.toast('先に行を「コピー」してください');
+          return;
+        }
         if (!id || id === NEW_ROW || !Store.get(id)) return U.toast('先に行をタップしてください');
         const act = b.dataset.ol;
         if (act === 'indent') indent(id);
         else if (act === 'outdent') outdent(id);
         else if (act === 'up') move(id, -1);
+        else if (act === 'copy') copyRow(id);
+        else if (act === 'cut') cutRow(id);
+        else if (act === 'paste') {
+          if (AP.Clipboard.isOwnCards('')) pasteRowsAfter(id);
+          else U.toast('先に行を「コピー」してください');
+        }
         else if (act === 'down') move(id, 1);
         else if (act === 'peel') {
           const ids = visibleIds();
@@ -352,6 +415,21 @@
     list.addEventListener('focusin', onFocusIn);
     list.addEventListener('focusout', onFocusOut);
     list.addEventListener('paste', onPaste);
+    // メニューからの「コピー」「カット」でも、文字を選んでいなければ行ごと
+    ['copy', 'cut'].forEach(function (type) {
+      list.addEventListener(type, function (e) {
+        const ta = e.target;
+        if (!ta.classList || !ta.classList.contains('ol-text') || hasSelection(ta)) return;
+        const id = ta.closest('.ol-row').dataset.id;
+        if (id === NEW_ROW) return;
+        e.preventDefault();
+        if (Date.now() - lastKeyCopy > 300) { type === 'cut' ? cutRow(id) : copyRow(id); }
+        if (e.clipboardData) e.clipboardData.setData('text/plain', AP.Clipboard.sigOf());
+      });
+    });
+    list.addEventListener('keydown', function (e) {
+      if ((e.metaKey || e.ctrlKey) && /^[cx]$/i.test(e.key)) lastKeyCopy = Date.now();
+    }, true);
     list.addEventListener('click', function (e) {
       const b = e.target.closest('.ol-bullet');
       if (b) focusRow(b.closest('.ol-row').dataset.id);
