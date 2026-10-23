@@ -61,7 +61,9 @@
       const tag = (e.target.tagName || '').toLowerCase();
       if (tag === 'input' || tag === 'textarea' || tag === 'select' || MapView.isEditing()) return;
       const sel = MapView.selected();
-      if ((e.key === 'Delete' || e.key === 'Backspace') && sel) {
+      if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
+        e.preventDefault(); MapView.addNextCard();
+      } else if ((e.key === 'Delete' || e.key === 'Backspace') && sel) {
         e.preventDefault(); MapView.peel(sel);
       } else if (e.key === 'Tab' && sel) {
         e.preventDefault(); MapView.addChildOfSelected();

@@ -201,7 +201,8 @@
     ta.addEventListener('keydown', function (e) {
       e.stopPropagation();
       if (e.isComposing || e.keyCode === 229) return; // 日本語変換中のEnterは無視
-      if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); finishEdit(); }
+      if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) { e.preventDefault(); addNextCard(); }
+      else if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); finishEdit(); }
       else if (e.key === 'Escape') { e.preventDefault(); finishEdit(true); }
     });
     ta.addEventListener('blur', function () { finishEdit(); });
@@ -259,6 +260,25 @@
     newCardId = card.id;
     select(card.id);
     startEdit(card.id);
+  }
+
+  // ⌘/Ctrl+Enter：選択中のカードの次に新しいカード（親がいれば兄弟として）。選択なしなら画面の真ん中
+  function addNextCard() {
+    if (editingId) finishEdit();
+    const base = selectedId ? Store.get(selectedId) : null;
+    if (!base) return createAtCenter();
+    const parent = base.parentId ? Store.get(base.parentId) : null;
+    let card;
+    if (parent && parent.status === 'active') {
+      card = Store.createCard({ parentId: parent.id, mapPos: { x: base.mapPos.x, y: base.mapPos.y } });
+      autoPlace(card.id, parent.id);
+    } else {
+      card = Store.createCard({ mapPos: { x: base.mapPos.x, y: base.mapPos.y + cardH(base.id) + C.CHILD_GAP_Y } });
+    }
+    newCardId = card.id;
+    select(card.id);
+    startEdit(card.id);
+    return card;
   }
 
   // 子（とその子孫）を親の右側、兄弟の下に並べる
@@ -570,6 +590,7 @@
     finishEdit: finishEdit,
     createAtCenter: createAtCenter,
     addChildOfSelected: addChildOfSelected,
+    addNextCard: addNextCard,
     peel: peel,
     attachTo: attachTo,
     cardAtClient: cardAtClient,
