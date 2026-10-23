@@ -382,6 +382,7 @@
         el.classList.toggle('selected', el.dataset.src === e.detail.id);
       });
     });
+    setupResizer();
     sceneSel = document.getElementById('tl-scene');
     sceneSel.addEventListener('change', function () { scene = sceneSel.value || null; render(); });
     window.addEventListener('resize', render);
@@ -389,6 +390,44 @@
       if (reason !== 'move') render(); // マップでカードを動かしている間は作り直さない
     });
     render();
+  }
+
+  // 上の端をドラッグして高さを変える（この端末に覚えておく）
+  const HEIGHT_KEY = 'anime-prepro:timelineHeight';
+  function setHeight(px) {
+    const ws = document.querySelector('.workspace');
+    const max = Math.max(C.TL_HEIGHT_MIN, ws.clientHeight * C.TL_HEIGHT_MAX_RATIO);
+    const h = Math.round(U.clamp(px, C.TL_HEIGHT_MIN, max));
+    ws.style.setProperty('--timeline-h', h + 'px');
+    return h;
+  }
+
+  function setupResizer() {
+    try {
+      const saved = parseInt(localStorage.getItem(HEIGHT_KEY), 10);
+      if (saved) setHeight(saved);
+    } catch (e) { /* 保存できない環境では既定の高さ */ }
+    const bar = document.getElementById('tl-resizer');
+    let rs = null;
+    bar.addEventListener('pointerdown', function (e) {
+      rs = { id: e.pointerId, y: e.clientY, h: panel.getBoundingClientRect().height };
+      bar.setPointerCapture(e.pointerId);
+      e.preventDefault();
+    });
+    bar.addEventListener('pointermove', function (e) {
+      if (!rs || e.pointerId !== rs.id) return;
+      setHeight(rs.h + (rs.y - e.clientY));
+    });
+    const end = function (e) {
+      if (!rs || e.pointerId !== rs.id) return;
+      rs = null;
+      const h = Math.round(panel.getBoundingClientRect().height);
+      try { localStorage.setItem(HEIGHT_KEY, String(h)); } catch (err) { /* 無視 */ }
+      render();
+      window.dispatchEvent(new Event('resize')); // マップなどの大きさを合わせ直す
+    };
+    bar.addEventListener('pointerup', end);
+    bar.addEventListener('pointercancel', end);
   }
 
   // シーンの選択肢：カットのあるシーン＋表示中のシーン

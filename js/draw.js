@@ -13,10 +13,12 @@
   // ------------------------------------------------------------
   // 線の描画（パネルとサムネイルで共通）
   // ------------------------------------------------------------
+  let minLinePx = 0; // サムネイルを作る間だけ、細い線が消えないよう最小の太さを決める
+
   function lineWidth(s, p, scale) {
     if (s.tool === 'eraser') return s.width * scale;
     const r = C.DRAW_MIN_PRESSURE_RATIO;
-    return s.width * (r + (1 - r) * p) * scale;
+    return Math.max(minLinePx, s.width * (r + (1 - r) * p) * scale);
   }
 
   function prepare(ctx, s) {
@@ -89,7 +91,8 @@
     cv.height = h;
     const c2 = cv.getContext('2d');
     c2.translate((w - pw * s) / 2, (h - ph * s) / 2);
-    drawStrokes(c2, strokes, s);
+    minLinePx = C.THUMB_MIN_LINE_PX;
+    try { drawStrokes(c2, strokes, s); } finally { minLinePx = 0; }
     const url = cv.toDataURL('image/png');
     thumbCache.set(strokes, { tag: tag, url: url });
     return url;

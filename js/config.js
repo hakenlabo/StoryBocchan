@@ -47,6 +47,8 @@ AP.CONFIG = {
 
   // ---- タイムライン ----
   TL_PX_PER_SEC: 80,           // 1秒あたりの幅（ズーム100%のとき）
+  TL_HEIGHT_MIN: 190,          // タイムラインの高さ（上の端をドラッグ）の下限
+  TL_HEIGHT_MAX_RATIO: 0.7,    // 上限（作業領域の高さに対する割合）
   TL_ZOOM_STEP: 1.25,          // －／＋ボタン1回の倍率
   TL_ZOOM_MIN: 0.25,
   TL_ZOOM_MAX: 6,
@@ -79,6 +81,7 @@ AP.CONFIG = {
   DRAW_MIN_POINT_DIST: 1.5,      // これより近い点は記録しない（データを軽くする）
   DRAW_UNDO_LIMIT: 100,
   DRAW_THUMB_W: 320,             // サムネイル画像の幅（px）
+  THUMB_MIN_LINE_PX: 2.5,        // サムネイルでの線の最小の太さ（320px幅の画像で。縮めても線が見えるように）
   // 用紙：画面の何倍の大きさに描くか（PAN・FOLLOW用の長い絵）。w＝横、h＝縦
   DRAW_PAPERS: [
     { name: '標準（画面と同じ）', w: 1, h: 1 },
