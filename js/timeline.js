@@ -82,6 +82,8 @@
         '<div class="tl-thumb"><span class="tl-no">' + (i + 1) + '</span></div>' +
         '<div class="tl-text"></div>' +
         '<div class="tl-dur" title="タップして尺を入力（秒+コマ）">' + U.framesToLabel(c.duration, fps) + '</div>' +
+        '<div class="tl-cam' + (AP.Camera.isEmpty(c.camera) ? ' empty' : '') + '" title="カメラワーク（PAN・T.U・F.Iなど）">' +
+          (AP.Camera.label(c.camera) || '🎥') + '</div>' +
         '<div class="tl-remove" title="タイムラインから外す（カードは消えません）">×</div>' +
         '<div class="tl-resize" title="ドラッグで尺を変える"></div>';
       el.querySelector('.tl-text').textContent = (c.linkOf ? '🔗 ' : '') + (src.text || '（無題）');
@@ -285,6 +287,9 @@
       if (p.target.closest('.tl-remove')) {
         Store.unadopt(p.id);
         U.toast('タイムラインから外しました（カードはマップに残っています）');
+      } else if (p.target.closest('.tl-cam')) {
+        AP.MapView.select(Store.source(Store.get(p.id)).id);
+        AP.Camera.open(p.id);
       } else if (p.target.closest('.tl-dur')) {
         AP.MapView.select(Store.source(Store.get(p.id)).id);
         startDurEdit(p.id);

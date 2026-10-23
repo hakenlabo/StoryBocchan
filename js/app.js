@@ -84,7 +84,7 @@
   function setupKeys() {
     document.addEventListener('keydown', function (e) {
       const tag = (e.target.tagName || '').toLowerCase();
-      if (tag === 'input' || tag === 'textarea' || tag === 'select' || MapView.isEditing() || AP.Draw.isOpen()) return;
+      if (tag === 'input' || tag === 'textarea' || tag === 'select' || MapView.isEditing() || AP.Draw.isOpen() || AP.Camera.isOpen()) return;
       if (document.body.dataset.view === 'vconte') return AP.Vconte.onKey(e);
       if (document.body.dataset.view === 'outline') return;
       const sel = MapView.selected();

@@ -594,3 +594,43 @@ body[data-view="outline"] .toolbar > :not(#btn-copy):not(#btn-paste) { visibilit
 }
 .ol-text:focus { background: #f3f6fd; }
 .ol-meta { flex: none; padding-top: 6px; font-size: 11px; color: var(--accent); white-space: nowrap; }
+
+/* ---- カメラワーク ---- */
+.dialog-back[hidden] { display: none; }
+.cam-dialog { max-width: 560px; max-height: calc(100vh - 32px); overflow-y: auto; }
+.cam-preview { display: flex; flex-direction: column; align-items: center; gap: 4px; margin-bottom: 12px; }
+.cam-preview canvas { border: 1px solid var(--border); background: #fff; }
+.cam-pv-note { font-size: 11px; color: var(--sub); }
+.cam-row { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+.cam-label { width: 64px; flex: none; font-size: 13px; color: var(--sub); }
+.cam-seg { display: flex; flex-wrap: wrap; gap: 4px; }
+.cam-seg button { min-height: 32px; font-size: 13px; }
+.cam-seg button.active, .cam-grid button.active { background: var(--ink); color: #fff; border-color: var(--ink); }
+.cam-grid { display: grid; grid-template-columns: repeat(3, 28px); gap: 3px; }
+.cam-grid button { width: 28px; height: 18px; padding: 0; border-radius: 3px; }
+.cam-clear { margin-right: auto; color: var(--danger); }
+
+.tl-cam {
+  display: inline-block;
+  margin: 3px 0;
+  padding: 1px 6px;
+  font-size: 11px;
+  font-weight: 700;
+  border-radius: 4px;
+  background: #fff4e0;
+  color: #b8650a;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.tl-cam.empty { background: transparent; font-weight: 400; opacity: 0; }
+.tl-card:hover .tl-cam.empty, .tl-card.selected .tl-cam.empty { opacity: .6; }
+
+.draw-stage { position: relative; }
+.draw-camframes { position: absolute; inset: 0; pointer-events: none; }
+.cam-frame { position: absolute; border: 2px dashed; border-radius: 2px; }
+.cam-frame span { position: absolute; left: 4px; top: 2px; font-size: 11px; font-weight: 700; padding: 0 4px; border-radius: 3px; color: #fff; }
+.cam-frame.from { border-color: #1c6fe0; }
+.cam-frame.from span { background: #1c6fe0; }
+.cam-frame.to { border-color: #e8590c; }
+.cam-frame.to span { background: #e8590c; top: auto; bottom: 2px; }
+.cam-tag { position: absolute; font-size: 12px; font-weight: 700; padding: 2px 8px; border-radius: 10px; background: rgba(0,0,0,.6); color: #fff; }

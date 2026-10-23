@@ -42,32 +42,78 @@
   // 1コマ分を描く（W×H は実ピクセル）
   // ------------------------------------------------------------
   function renderFrame(c2d, W, H, f) {
+    const i = cutIndexAt(f);
+    if (i < 0) {
+      c2d.setTransform(1, 0, 0, 1, 0, 0);
+      c2d.fillStyle = '#ffffff';
+      c2d.fillRect(0, 0, W, H);
+      return;
+    }
+    renderCut(c2d, W, H, cuts[i].card, f - cuts[i].start, i);
+  }
+
+  // 1カットの local コマ目を描く。cutCard はタイムライン上のカード（連動カットならそれ自身。尺とカメラはこちら）
+  // opts.overlays === false でカット番号・字幕を描かない（カメラ設定のプレビュー用）
+  function renderCut(c2d, W, H, cutCard, local, index, opts) {
     const st = Store.settings();
+    const card = Store.source(cutCard); // 絵と文字は元のカード
+    const cam = cutCard.camera;
+    const duration = cutCard.duration;
     c2d.setTransform(1, 0, 0, 1, 0, 0);
     c2d.globalCompositeOperation = 'source-over';
+    c2d.globalAlpha = 1;
     c2d.fillStyle = '#ffffff';
     c2d.fillRect(0, 0, W, H);
-    const i = cutIndexAt(f);
-    if (i < 0) return;
-    const cut = cuts[i];
-    const card = Store.source(cut.card); // 連動カットは元のカードの絵と文字
 
-    const key = cut.card.id + '|' + W + 'x' + H;
-    if (layerKey !== key || layer._strokes !== card.strokes) {
-      layer.width = W;
-      layer.height = H;
+    // 絵の層：カメラが動かないなら作り置き、動くなら毎コマ線から描く（拡大してもぼやけない）
+    const baseH = C.DRAW_BASE_W / U.aspectRatio(st.aspect);
+    const t = duration > 1 ? local / (duration - 1) : 0;
+    const v = AP.Camera.view(cam, t, baseH);
+    const still = v.z === 1 && !v.tile && v.cx === C.DRAW_BASE_W / 2 && v.cy === baseH / 2;
+    const key = card.id + '|' + W + 'x' + H;
+    if (!still || layerKey !== key || layer._strokes !== card.strokes) {
+      if (layer.width !== W || layer.height !== H) { layer.width = W; layer.height = H; }
+      layerCtx.setTransform(1, 0, 0, 1, 0, 0);
       layerCtx.clearRect(0, 0, W, H);
-      AP.Draw.drawStrokes(layerCtx, card.strokes, W / C.DRAW_BASE_W);
-      layerKey = key;
+      const s = (W / C.DRAW_BASE_W) * v.z;
+      const offsets = [[0, 0]];
+      if (v.tile) {
+        // FOLLOW：窓にかかる分だけ絵を並べる
+        offsets.length = 0;
+        const span = v.tile === 'x' ? C.DRAW_BASE_W : baseH;
+        const c0 = v.tile === 'x' ? v.cx : v.cy;
+        const half = span / v.z / 2;
+        for (let k = Math.floor((c0 - half) / span); k <= Math.floor((c0 + half) / span); k++) {
+          offsets.push(v.tile === 'x' ? [k * span, 0] : [0, k * span]);
+        }
+      }
+      offsets.forEach(function (o) {
+        layerCtx.setTransform(1, 0, 0, 1, W / 2 - (v.cx - o[0]) * s, H / 2 - (v.cy - o[1]) * s);
+        AP.Draw.drawStrokes(layerCtx, card.strokes, s);
+      });
+      layerCtx.setTransform(1, 0, 0, 1, 0, 0);
+      layerKey = still ? key : null;
       layer._strokes = card.strokes;
     }
     c2d.drawImage(layer, 0, 0);
 
+    // F.I／F.O
+    const fd = AP.Camera.fade(cam, local, duration);
+    if (fd) {
+      c2d.globalAlpha = fd.alpha;
+      c2d.fillStyle = fd.color;
+      c2d.fillRect(0, 0, W, H);
+      c2d.globalAlpha = 1;
+    }
+
+    if (opts && opts.overlays === false) return;
     const fs = Math.max(10, Math.round(H * C.VC_FONT_RATIO));
     c2d.font = 'bold ' + fs + 'px -apple-system, "Hiragino Sans", "Yu Gothic UI", Meiryo, sans-serif';
     c2d.textBaseline = 'middle';
     if (st.vcShowCutNo) {
-      const label = 'C' + (i + 1) + '  ' + U.framesToLabel(f - cut.start, st.fps) + ' / ' + U.framesToLabel(cut.card.duration, st.fps);
+      const camLabel = AP.Camera.label(cam);
+      const label = 'C' + (index + 1) + '  ' + U.framesToLabel(local, st.fps) + ' / ' + U.framesToLabel(duration, st.fps) +
+        (camLabel ? '  ' + camLabel : '');
       const pad = fs * 0.4;
       const w = c2d.measureText(label).width + pad * 2;
       c2d.fillStyle = 'rgba(0,0,0,.55)';
@@ -223,6 +269,10 @@
     document.getElementById('vc-start').addEventListener('click', function () { seek(0); });
     document.getElementById('vc-prev').addEventListener('click', function () { seekCut(-1); });
     document.getElementById('vc-next').addEventListener('click', function () { seekCut(1); });
+    document.getElementById('vc-camera').addEventListener('click', function () {
+      const i = cutIndexAt(frame);
+      if (i >= 0) { pause(); AP.Camera.open(cuts[i].card.id); }
+    });
     document.getElementById('vc-draw').addEventListener('click', function () {
       const i = cutIndexAt(frame);
       if (i >= 0) { pause(); AP.Draw.open(cuts[i].card.id); }
@@ -272,6 +322,7 @@
     hide: pause,
     onKey: onKey,
     renderFrame: renderFrame,
+    renderCut: renderCut,
     rebuild: rebuild,
     totalFrames: function () { return total; },
     // テスト・デバッグ用

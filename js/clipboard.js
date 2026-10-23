@@ -35,6 +35,7 @@
         strokes: JSON.parse(JSON.stringify(card.strokes)),
         duration: card.duration,
         note: card.note,
+        camera: card.camera ? JSON.parse(JSON.stringify(card.camera)) : null,
         parentIndex: parentIndex,
         dx: card.mapPos.x - root.mapPos.x,
         dy: card.mapPos.y - root.mapPos.y,
@@ -80,7 +81,7 @@
         ? AP.MapView.freeSpot(center.x - C.CARD_W / 2, center.y - C.CARD_H_ESTIMATE / 2)
         : { x: base.mapPos.x + it.dx, y: base.mapPos.y + it.dy };
       created.push(Store.createCard({
-        text: it.text, strokes: it.strokes, duration: it.duration, note: it.note,
+        text: it.text, strokes: it.strokes, duration: it.duration, note: it.note, camera: it.camera || null,
         parentId: parentId, mapPos: pos,
       }));
     });
@@ -168,7 +169,7 @@
   // イベント
   // ------------------------------------------------------------
   function blocked(e) {
-    return e.defaultPrevented || isTextField(e.target) || !!document.querySelector('.dialog-back');
+    return e.defaultPrevented || isTextField(e.target) || !!document.querySelector('.dialog-back:not([hidden])');
   }
 
   // システムのクリップボードにも文字を入れておく（あとで外から貼られたものと区別するため）

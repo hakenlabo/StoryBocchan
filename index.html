@@ -106,6 +106,7 @@
         <span id="vc-cut" class="vc-cut"></span>
         <label class="vc-opt"><input id="vc-show-cutno" type="checkbox"> カット番号</label>
         <label class="vc-opt"><input id="vc-show-text" type="checkbox"> テキスト</label>
+        <button id="vc-camera" type="button" title="いま表示しているカットのカメラワーク">🎥 カメラ</button>
         <button id="vc-draw" type="button" title="いま表示しているカットを描画パネルで開く">✎ このカットを描く</button>
       </div>
     </section>
@@ -124,12 +125,13 @@
       <span class="sep"></span>
       <button id="draw-undo" type="button" title="取り消し（⌘/Ctrl+Z）">↶ 取り消し</button>
       <button id="draw-redo" type="button" title="やり直し（⌘/Ctrl+Shift+Z）">↷ やり直し</button>
+      <button id="draw-camera" type="button" title="このカットのカメラワーク（PAN・T.U・F.Iなど）">🎥 カメラ</button>
       <button id="draw-clear" type="button">全部消す</button>
       <button id="draw-copy" type="button" title="この絵をコピー（⌘/Ctrl+C）">絵をコピー</button>
       <button id="draw-paste" type="button" title="コピーした絵を重ねる（⌘/Ctrl+V）">絵を貼り付け</button>
       <button id="draw-close" class="primary" type="button" title="閉じる（Esc）">完了</button>
     </div>
-    <div id="draw-stage" class="draw-stage"><canvas id="draw-canvas"></canvas></div>
+    <div id="draw-stage" class="draw-stage"><canvas id="draw-canvas"></canvas><div id="draw-camframes" class="draw-camframes"></div></div>
   </div>
 
   <div id="toast" class="toast" role="status"></div>
@@ -143,6 +145,7 @@
   <script src="js/tray.js"></script>
   <script src="js/timeline.js"></script>
   <script src="js/draw.js"></script>
+  <script src="js/camera.js"></script>
   <script src="js/vconte.js"></script>
   <script src="js/clipboard.js"></script>
   <script src="js/outline.js"></script>

@@ -158,6 +158,36 @@
     canvas.height = Math.round(h * dpr);
     scale = w / C.DRAW_BASE_W;
     redraw();
+    renderCamFrames();
+  }
+
+  // カメラワークの「始め」「終わり」の枠を重ねて見せる（どこが映るか分かるように）
+  function renderCamFrames() {
+    const box = document.getElementById('draw-camframes');
+    box.innerHTML = '';
+    const card = cardId && Store.get(cardId);
+    const cam = card && card.camera;
+    if (!cam || !cam.move || cam.move === 'none') return;
+    const baseH = C.DRAW_BASE_W / U.aspectRatio(Store.settings().aspect);
+    const cr = canvas.getBoundingClientRect();
+    const sr = stage.getBoundingClientRect();
+    [['始め', 0, 'from'], ['終わり', 1, 'to']].forEach(function (f) {
+      const r = AP.Camera.rectOf(AP.Camera.view(cam, f[1], baseH), baseH);
+      const el = document.createElement('div');
+      el.className = 'cam-frame ' + f[2];
+      el.style.left = (cr.left - sr.left + r.x * scale) + 'px';
+      el.style.top = (cr.top - sr.top + r.y * scale) + 'px';
+      el.style.width = (r.w * scale) + 'px';
+      el.style.height = (r.h * scale) + 'px';
+      el.innerHTML = '<span>' + f[0] + '</span>';
+      box.appendChild(el);
+    });
+    const tag = document.createElement('div');
+    tag.className = 'cam-tag';
+    tag.textContent = '🎥 ' + AP.Camera.label(cam);
+    tag.style.left = (cr.left - sr.left + 6) + 'px';
+    tag.style.top = (cr.bottom - sr.top - 28) + 'px';
+    box.appendChild(tag);
   }
 
   function redraw() {
@@ -281,7 +311,7 @@
   }
 
   function onKeyDown(e) {
-    if (!cardId) return;
+    if (!cardId || AP.Camera.isOpen()) return; // カメラ設定を開いている間はそちらが受ける
     const mod = e.metaKey || e.ctrlKey;
     if (mod && e.key.toLowerCase() === 'z') { e.preventDefault(); e.shiftKey ? redo() : undo(); }
     else if (mod && e.key.toLowerCase() === 'y') { e.preventDefault(); redo(); }
@@ -335,6 +365,8 @@
     undoBtn.addEventListener('click', undo);
     redoBtn.addEventListener('click', redo);
     document.getElementById('draw-clear').addEventListener('click', clearAll);
+    document.getElementById('draw-camera').addEventListener('click', function () { if (cardId) AP.Camera.open(cardId); });
+    Store.subscribe(function (reason) { if (cardId && (reason === 'camera' || reason === 'settings')) renderCamFrames(); });
     document.getElementById('draw-copy').addEventListener('click', function () { AP.Clipboard.copyButton(); });
     document.getElementById('draw-paste').addEventListener('click', function () { AP.Clipboard.pasteButton(); });
     document.getElementById('draw-close').addEventListener('click', close);

@@ -74,6 +74,14 @@ AP.CONFIG = {
   VC_SHOW_CUT_NO: true,        // カット番号と時間を絵に重ねる（既定値。画面のチェックで変えられる）
   VC_SHOW_TEXT: true,          // カードの文字を下に字幕のように重ねる（既定値）
 
+  // ---- カメラワーク ----
+  CAM_PAN_AMOUNTS: [1.2, 1.5, 2],     // PAN：絵を何倍に拡大して端から端へ動かすか
+  CAM_ZOOM_AMOUNTS: [1.2, 1.5, 2],    // T.U／T.B：何倍まで寄るか
+  CAM_FOLLOW_AMOUNTS: [0.5, 1, 2],    // FOLLOW：1カットで絵が何画面ぶん流れるか
+  CAM_FADE_SECS: [0.25, 0.5, 1],      // FI／FO の長さ（秒）の選択肢
+  CAM_DEFAULT_AMOUNT_INDEX: 1,
+  CAM_PREVIEW_W: 360,                 // 設定パネルのプレビューの幅
+
   // ---- 保存 ----
   AUTOSAVE_DELAY_MS: 500,      // 最後の変更からこの時間で自動保存
 

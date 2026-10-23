@@ -25,7 +25,8 @@
       note: '',
       trayInfo: null,
       treeOrder: null,   // マップのツリー上の兄弟の順番（箇条書きの並び）。座標とは別に持つ
-      linkOf: null,      // 連動カット：絵と文字はこのidのカードのものを使う（尺と順番だけ自分で持つ）
+      linkOf: null,      // 連動カット：絵と文字はこのidのカードのものを使う（尺・順番・カメラは自分で持つ）
+      camera: null,      // カメラワーク（js/camera.js）。なしは null
     }, props || {});
   }
 
@@ -289,6 +290,13 @@
     emit('restore');
   };
 
+  S.setCamera = function (id, camera) {
+    const card = byId.get(id);
+    if (!card) return;
+    card.camera = camera;
+    emit('camera');
+  };
+
   // 絵。配列ごと差し替える（サムネイルのキャッシュは配列の同一性で判定している）
   S.setStrokes = function (id, strokes) {
     const card = byId.get(id);
@@ -365,6 +373,7 @@
       strokes: JSON.parse(JSON.stringify(src.strokes)),
       duration: src.duration,
       note: src.note,
+      camera: src.camera ? JSON.parse(JSON.stringify(src.camera)) : null,
       parentId: src.parentId,
       mapPos: { x: src.mapPos.x, y: src.mapPos.y },
       treeOrder: src.treeOrder + 0.5,
