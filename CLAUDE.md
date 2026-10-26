@@ -68,6 +68,8 @@ XMindの良さは「ポストイットのようにつけたり剥がしたりで
   - ボタンを素早く続けて押すと「ダブルタップかも」と判断されて click が来ないことがある → app.js の setupFastTap で、指・ペンは離した瞬間にボタンを押したことにする（遅れて来る click は捨てる）。
   - getCoalescedEvents に古い位置が後から混ざることがあり、線が折り返す → timeStamp が前より新しいものだけ使う（draw.js）。
   - pointercancel の座標は当てにならないので線に足さない。
+  - キャンバスの touchstart/move/end は preventDefault（長押しメニュー・虫めがね・スクリブル・クリックを止める。Pointer Events は届く）。
+  - アプリ全体で contextmenu と dragstart を止める（入力欄は除く）。ペンのサイドボタン（button 2）・消しゴム側（button 5）は押している間だけ消しゴム。
 
 ## 操作感の調整
 

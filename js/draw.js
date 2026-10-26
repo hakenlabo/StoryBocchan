@@ -345,13 +345,17 @@
     if (e.pointerType === 'pen') penSeen = true;
     if (cur) return; // 2本目の指などは無視
     if (e.pointerType === 'touch' && penSeen && C.DRAW_PEN_ONLY_AFTER_PEN) return;
-    if (e.button > 0) return;
+    // ペンのサイドボタン（右クリック扱い＝button 2）・消しゴム側（button 5）は、押している間だけ消しゴム。
+    // マウスの右ボタン・中ボタンでは描かない
+    const penEraser = e.pointerType === 'pen' && (e.button === 2 || e.button === 5 || (e.buttons & 32) || (e.buttons & 2));
+    if (e.button > 0 && !penEraser) return;
     e.preventDefault();
     canvas.setPointerCapture(e.pointerId);
+    const t = penEraser ? 'eraser' : tool;
     cur = {
-      tool: tool,
-      color: tool === 'eraser' ? null : color,
-      width: tool === 'eraser' ? C.ERASER_SIZE : size,
+      tool: t,
+      color: t === 'eraser' ? null : color,
+      width: t === 'eraser' ? C.ERASER_SIZE : size,
       points: [toPoint(e)],
       pointerId: e.pointerId,
     };
@@ -498,6 +502,13 @@
     canvas.addEventListener('pointermove', onPointerMove);
     canvas.addEventListener('pointerup', onPointerUp);
     canvas.addEventListener('pointercancel', onPointerUp);
+    // iPad：キャンバスの上では、長押しメニュー・虫めがね・スクリブル（手書き入力）・クリックなどの標準の動きを止めて、描くだけにする。
+    // （Pointer Events はそのまま届く）
+    ['touchstart', 'touchmove', 'touchend'].forEach(function (t) {
+      canvas.addEventListener(t, function (e) { if (e.cancelable) e.preventDefault(); }, { passive: false });
+    });
+    stage.addEventListener('contextmenu', function (e) { e.preventDefault(); });
+    canvas.addEventListener('dragstart', function (e) { e.preventDefault(); });
     document.addEventListener('keydown', onKeyDown, true);
     window.addEventListener('resize', onViewportChange);
     if (window.visualViewport) window.visualViewport.addEventListener('resize', onViewportChange);

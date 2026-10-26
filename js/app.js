@@ -259,6 +259,11 @@
 
   async function start() {
     setupFastTap();
+    // アプリの中では、ブラウザの右クリックメニュー（長押し・ペンのサイドボタンで出るもの）や、絵のドラッグを出さない。
+    // 文字の入力欄ではふつうに使えるようにする
+    const isText = function (el) { return el && el.closest && el.closest('input, textarea, [contenteditable="true"]'); };
+    document.addEventListener('contextmenu', function (e) { if (!isText(e.target)) e.preventDefault(); });
+    document.addEventListener('dragstart', function (e) { if (!isText(e.target)) e.preventDefault(); });
     // ページ自体のピンチズーム（Safari）を止める。マップのズームは map.js が処理する
     document.addEventListener('gesturestart', function (e) { e.preventDefault(); });
     // 入力欄を離れたら、iOS が勝手に拡大した表示を元に戻す（viewport を一度書き換えると等倍に戻る）
