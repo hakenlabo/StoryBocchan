@@ -197,6 +197,16 @@
   async function start() {
     // ページ自体のピンチズーム（Safari）を止める。マップのズームは map.js が処理する
     document.addEventListener('gesturestart', function (e) { e.preventDefault(); });
+    // 入力欄を離れたら、iOS が勝手に拡大した表示を元に戻す（viewport を一度書き換えると等倍に戻る）
+    const vpMeta = document.querySelector('meta[name="viewport"]');
+    document.addEventListener('focusout', function (e) {
+      const tag = (e.target.tagName || '').toLowerCase();
+      if (!vpMeta || (tag !== 'input' && tag !== 'textarea' && tag !== 'select')) return;
+      if (window.visualViewport && window.visualViewport.scale <= 1.01) return;
+      const c = vpMeta.getAttribute('content');
+      vpMeta.setAttribute('content', c + ', minimum-scale=1');
+      setTimeout(function () { vpMeta.setAttribute('content', c); }, 50);
+    });
 
     const backend = await Storage.init();
     Storage.onStatus(setStatus);

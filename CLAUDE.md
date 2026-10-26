@@ -30,6 +30,11 @@ XMindの良さは「ポストイットのようにつけたり剥がしたりで
 - 主な端末は Mac / Windows / iPad の混在。**Safari・Chrome両方で動くこと。**
   - 入力は Pointer Events で統一（ペン・タッチ・マウス）。`dblclick` はiPadで当てにならないので自前で判定する。
   - モダン構文（const/let、アロー関数、async/await）は使ってよい。import/export は使わない。
+  - **iPad（とくに mini 744px幅）でページ全体が拡大されないこと**：
+    - 画面からはみ出す要素を作らない（見出しは狭い画面で詰める・ツールバーは横スクロール）。はみ出すと iOS がページを広げる。
+    - 指の端末では入力欄（input/select/textarea）の文字を16px以上にする（16px未満だとタップで自動拡大）。
+    - ダブルタップ拡大を止めるため touch-action: manipulation（絵・マップ・タイムラインは none）。body は position:fixed。
+    - 入力欄を離れたら、拡大されていれば viewport を書き換えて等倍に戻す（app.js）。
 
 ## 公開（GitHub Pages）
 

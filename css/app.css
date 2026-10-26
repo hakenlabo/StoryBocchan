@@ -843,3 +843,55 @@ body[data-view="timeline"] .tl-resizer { display: none; }
   .outline.with-ref .ol-body { flex-direction: column; }
   .outline.with-ref .ol-ref { width: auto; min-width: 0; height: 42%; border-right: none; border-bottom: 1px solid var(--border); }
 }
+
+/* ================================================================
+   iPad（とくに mini）対策：ページ全体が拡大されて見渡せなくなるのを防ぐ
+   ================================================================ */
+/* ページ自体は動かさない（iOS Safari は body の overflow:hidden を無視して横にずれることがある） */
+html, body { width: 100%; height: 100%; overflow: hidden; }
+body { position: fixed; inset: 0; }
+/* ダブルタップでページが拡大されないように（絵・マップなどは個別に touch-action:none） */
+html, body, button, label, select, input, textarea, .app-header, .toolbar, .draw-bar, .ol-bar, .tl-head, .vc-controls { touch-action: manipulation; }
+/* 見出しやツールバーが画面からはみ出さない（はみ出すと iOS がページを広げてしまう） */
+.app-header { overflow: hidden; min-width: 0; }
+.app-header > * { flex-shrink: 0; }
+.app-header .save-status { flex-shrink: 1; }
+.toolbar { overflow-x: auto; scrollbar-width: none; }
+.toolbar::-webkit-scrollbar { display: none; }
+/* 指で触る端末では入力欄の文字を16px以上に（16px未満だと iOS がタップしたときに拡大する） */
+@media (pointer: coarse) {
+  input[type="text"], input:not([type]), select, textarea { font-size: 16px !important; }
+}
+/* 縦長・狭い画面では見出しを詰める */
+@media (max-width: 960px) {
+  .app-header { gap: 5px; padding: 0 8px; }
+  .settings { gap: 4px; }
+  .settings label { font-size: 0; }              /* 「fps」「画面比」の文字を隠して選択肢だけ */
+  .settings select { font-size: 13px; }
+  .project-title { width: 110px; }
+  #btn-project, #btn-save, #btn-pdf { font-size: 0; padding: 4px 8px; }
+  #btn-project::before { content: "📁"; font-size: 15px; }
+  #btn-save::before { content: "💾"; font-size: 15px; }
+  #btn-pdf::before { content: "📄"; font-size: 15px; }
+  .view-tabs .tab { padding: 4px 7px; }
+  .save-status { font-size: 0; width: 12px; height: 12px; padding: 0; border-radius: 50%; background: var(--ok); }
+  .save-status.dirty { background: #c9ced6; }
+  .save-status.warn { background: var(--warn); }
+  .save-status.error { background: var(--danger); width: auto; height: auto; font-size: 11px; padding: 2px 6px; border-radius: 8px; }
+}
+/* 描画パネルは画面いっぱい（iOS の表示域に合わせる） */
+.draw-panel { width: 100vw; height: 100vh; height: 100dvh; }
+@media (max-width: 960px) {
+  .draw-bar { gap: 4px; padding: 6px 8px; }
+  .draw-bar button { min-height: 32px; padding: 3px 8px; }
+  .draw-title { max-width: 120px; }
+  .draw-notes { gap: 6px; padding: 6px 8px; }
+  .draw-note-field textarea { min-height: 44px; }
+}
+@media (max-width: 800px) {
+  .project-title { width: 88px; }
+  .view-tabs { gap: 2px; }
+  .view-tabs .tab { font-size: 13px; padding: 4px 6px; }
+  .undo-group button { min-width: 30px; padding: 2px 6px; }
+  .settings select { max-width: 64px; }
+}
