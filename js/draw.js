@@ -114,6 +114,8 @@
   let cur = null;           // 描いている途中の線
   let penSeen = false;
   let lastPointer = null;   // 診断表示（?debug=1）用
+  const DEBUG = /[?&]debug=1/.test(location.search);
+  function dlog() { if (DEBUG) console.log('[draw] ' + Array.prototype.join.call(arguments, ' ')); }
 
   function isOpen() { return !!cardId; }
 
@@ -123,6 +125,7 @@
     if (AP.MapView.isEditing()) AP.MapView.finishEdit();
     if (document.activeElement && document.activeElement.blur) document.activeElement.blur(); // キーボードを閉じてから
     resetScroll();
+    dlog('open', id, 'was', cardId);
     cardId = id;
     drawId = Store.source(card).id;
     strokes = Store.get(drawId).strokes || [];
@@ -166,6 +169,7 @@
   }
 
   function close() {
+    dlog('close', cardId, new Error().stack.split('\n').slice(1, 4).join(' | '));
     if (!cardId) return;
     endStroke();
     cardId = null;
@@ -337,6 +341,7 @@
   }
 
   function onPointerDown(e) {
+    dlog('down', e.pointerId, e.pointerType, 'cur', cur ? cur.pointerId : 'none');
     if (e.pointerType === 'pen') penSeen = true;
     if (cur) return; // 2本目の指などは無視
     if (e.pointerType === 'touch' && penSeen && C.DRAW_PEN_ONLY_AFTER_PEN) return;
@@ -372,24 +377,32 @@
   function onPointerMove(e) {
     if (!cur || e.pointerId !== cur.pointerId) return;
     // ペンは間引かれたイベントもまとめて拾う（なめらかさのため）
+    // iPad の WebKit は古い位置が後から混ざることがあるので、前の点より新しいものだけを使う（線が折り返さないように）
     const list = e.getCoalescedEvents ? e.getCoalescedEvents() : null;
-    if (list && list.length) list.forEach(addPoint);
-    else addPoint(e);
+    const evs = list && list.length ? list : [e];
+    evs.forEach(function (ce) {
+      if (ce.timeStamp && cur.lastT && ce.timeStamp <= cur.lastT) return;
+      cur.lastT = ce.timeStamp || cur.lastT;
+      addPoint(ce);
+    });
   }
 
   function endStroke() {
+    dlog('endStroke', cur ? cur.points.length + 'pts' : 'none');
     if (!cur) return;
     const s = cur;
     cur = null;
     delete s.pointerId;
+    delete s.lastT;
     if (s.tool === 'eraser' && !s.color) delete s.color;
     commit(strokes.concat([s]));
     redraw(); // 最後の区間まできれいに描き直す
   }
 
   function onPointerUp(e) {
+    dlog(e.type, e.pointerId, 'cur', cur ? cur.pointerId + '/' + cur.points.length : 'none', 'card', cardId);
     if (!cur || e.pointerId !== cur.pointerId) return;
-    addPoint(e);
+    if (e.type === 'pointerup') addPoint(e); // pointercancel の位置は当てにならないので足さない
     endStroke();
   }
 
@@ -501,7 +514,9 @@
       const r = canvas.getBoundingClientRect(), pr = panel.getBoundingClientRect();
       return 'draw panel ' + Math.round(pr.width) + 'x' + Math.round(pr.height) + '@' + Math.round(pr.top) +
         '  canvas ' + Math.round(r.width) + 'x' + Math.round(r.height) + '@' + Math.round(r.left) + ',' + Math.round(r.top) +
-        (lastPointer ? '\npointer ' + lastPointer.type + ' ' + lastPointer.x + ',' + lastPointer.y + ' p' + lastPointer.p.toFixed(2) : '');
+        (lastPointer ? '\npointer ' + lastPointer.type + ' ' + lastPointer.x + ',' + lastPointer.y + ' p' + lastPointer.p.toFixed(2) : '') +
+        '\nstrokes ' + strokes.length + (cur ? '  drawing#' + cur.pointerId + ' ' + cur.points.length + 'pts' : '') +
+        (strokes.length ? '  last ' + strokes[strokes.length - 1].points.length + 'pts' : '');
     },
     // ほかのカードからコピーした絵を重ねる（取り消し可）
     pasteStrokes: function (list) {

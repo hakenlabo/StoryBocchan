@@ -6,7 +6,7 @@ window.AP = window.AP || {};
 
 AP.CONFIG = {
   APP_NAME: 'ストーリー坊ちゃん',     // アプリの名前（画面・保存ファイルの説明に出る）
-  APP_VERSION: '2026102602',          // 版番号（index.html の ?v= と同じにする）
+  APP_VERSION: '2026102607',          // 版番号（index.html の ?v=・sw.js の VERSION と同じ。tools/bump-version.sh で変える）
 
   // ---- カードの見た目 ----
   CARD_W: 160,                 // カード幅（ワールド座標px）。高さはサムネ（画面比）＋テキストで決まる

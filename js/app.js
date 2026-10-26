@@ -159,6 +159,37 @@
     b.textContent = '☑ 複数選択' + (n ? '（' + n + '）' : '');
   }
 
+  // iPad：ボタンを指やペンで素早く続けて押すと、Safari／アプリが「ダブルタップかも」と判断して click を出さないことがある
+  // （カードを選んですぐ「描く」、描画パネルで道具を次々に押す、など）。指・ペンでは、離した瞬間にボタンを押したことにする。
+  // あとから遅れて来る本物の click は、二重に効かないよう捨てる。
+  function setupFastTap() {
+    let down = null;        // { btn, x, y }
+    let fired = null;       // { btn, t }
+    document.addEventListener('pointerdown', function (e) {
+      if (e.pointerType === 'mouse') { down = null; return; }
+      const b = e.target.closest && e.target.closest('button');
+      down = b && !b.disabled ? { btn: b, x: e.clientX, y: e.clientY } : null;
+    }, true);
+    document.addEventListener('pointerup', function (e) {
+      const d = down;
+      down = null;
+      if (!d || e.pointerType === 'mouse') return;
+      const b = e.target.closest && e.target.closest('button');
+      if (b !== d.btn || b.disabled || Math.hypot(e.clientX - d.x, e.clientY - d.y) > 12) return;
+      fired = { btn: b, t: performance.now() };
+      b.click();
+    }, true);
+    document.addEventListener('pointercancel', function () { down = null; }, true);
+    document.addEventListener('click', function (e) {
+      if (!e.isTrusted || !fired) return;
+      if (performance.now() - fired.t < 800 && e.target.closest && e.target.closest('button') === fired.btn) {
+        e.preventDefault();
+        e.stopImmediatePropagation();
+      }
+      fired = null;
+    }, true);
+  }
+
   // URL に ?debug=1 を付けると、画面の大きさや拡大率を表示する（iPadで表示がおかしいときの確認用）
   function setupDebug() {
     if (!/[?&]debug=1/.test(location.search)) return;
@@ -178,6 +209,14 @@
         '\n' + navigator.userAgent.slice(0, 90);
     };
     show();
+    // 触った操作をコンソールに出す（iPadアプリではアプリのログに出る）
+    ['pointerdown', 'pointerup', 'pointercancel', 'click'].forEach(function (t) {
+      document.addEventListener(t, function (e) {
+        const el = e.target;
+        console.log('[event] ' + t + ' ' + (e.pointerType || '') + '#' + (e.pointerId === undefined ? '' : e.pointerId) + ' ' + Math.round(e.clientX) + ',' + Math.round(e.clientY) +
+          ' ' + (el.id || el.className || el.tagName));
+      }, true);
+    });
     window.addEventListener('resize', show);
     if (window.visualViewport) window.visualViewport.addEventListener('resize', show);
     setInterval(show, 1000);
@@ -219,6 +258,7 @@
   }
 
   async function start() {
+    setupFastTap();
     // ページ自体のピンチズーム（Safari）を止める。マップのズームは map.js が処理する
     document.addEventListener('gesturestart', function (e) { e.preventDefault(); });
     // 入力欄を離れたら、iOS が勝手に拡大した表示を元に戻す（viewport を一度書き換えると等倍に戻る）
@@ -234,6 +274,10 @@
       }, 100);
     });
     setupDebug();
+    // ホーム画面アプリ・iPadアプリ用：オフラインでも開けるようにファイルを端末に保存（http/https のときだけ）
+    if ('serviceWorker' in navigator && /^https?:$/.test(location.protocol)) {
+      navigator.serviceWorker.register('sw.js').catch(function (e) { console.warn('Service Worker を登録できません', e); });
+    }
 
     const backend = await Storage.init();
     Storage.onStatus(setStatus);

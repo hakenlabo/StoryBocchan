@@ -50,6 +50,25 @@ XMindの良さは「ポストイットのようにつけたり剥がしたりで
 - 作品データは各ブラウザの IndexedDB（オリジン単位）にあり、リポジトリには入らない。
   file:// で使った作品と Web 版の作品は別のオリジンなので共有されない（zip で移す）。
 
+## ホーム画面アプリ（PWA）と iPad アプリ
+
+- PWA：`manifest.webmanifest`（名前・アイコン・standalone）、`icons/`、`sw.js`（Service Worker）。
+  - sw.js：インストール時に全ファイルを保存。ページ本体（index.html）はネット優先、ほかは保存した物優先。VERSION が変わると古い保存を消す。
+  - 登録は app.js で http/https のときだけ（file:// では使わない）。manifest のリンクも http/https のときだけ足す。
+  - iOS のホーム画面アプリは Safari と保存場所（IndexedDB）が別。
+- **版番号は `tools/bump-version.sh` で上げる**（index.html の ?v=・config.APP_VERSION・sw.js の VERSION を一度に）。push の前に必ず実行。
+- iPad アプリ：`ios/StoryBocchan.xcodeproj`（SwiftUI＋WKWebView、iPad専用、iOS 16〜）。Xcode 16 以降の「フォルダ同期」形式なので、
+  `ios/StoryBocchan/` にファイルを置けば自動でプロジェクトに入る。
+  - 公開版のURLを開く（AppConfig.startURL）。Info.plist の WKAppBoundDomains で Service Worker（オフライン）を有効化。
+  - `<a download>`（zip・PDF）は WKDownload で受け取って共有シートに出す。ほかのサイトへのリンクは Safari で開く。拡大・スクロールは止めている。
+  - Web版の console.log/エラーはアプリのログ（Xcode のコンソール）に `[web]` 付きで出る。
+  - 調べもの：起動引数 `-startURL "http://127.0.0.1:ポート/index.html?debug=1"` で手元のサーバーの版を開ける（このときは App-Bound の制限を外す）。
+    シミュレータ：`xcrun simctl launch <端末> jp.t1912.StoryBocchan -startURL ...`、ログは `xcrun simctl spawn <端末> log stream --predicate 'eventMessage CONTAINS "[web]"'`。
+- **iPad（WebKit）の落とし穴（シミュレータで確認済み）**：
+  - ボタンを素早く続けて押すと「ダブルタップかも」と判断されて click が来ないことがある → app.js の setupFastTap で、指・ペンは離した瞬間にボタンを押したことにする（遅れて来る click は捨てる）。
+  - getCoalescedEvents に古い位置が後から混ざることがあり、線が折り返す → timeStamp が前より新しいものだけ使う（draw.js）。
+  - pointercancel の座標は当てにならないので線に足さない。
+
 ## 操作感の調整
 
 - ドラッグのしきい値、ダブルタップ判定時間、カード寸法、ズーム範囲、自動配置の間隔などの定数は

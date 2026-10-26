@@ -30,7 +30,21 @@
   })();
   </script>
   <title>ストーリー坊ちゃん</title>
-  <link rel="stylesheet" href="css/app.css?v=2026102602">
+  <!-- ホーム画面に追加したときのアプリ（全画面で起動・アイコン） -->
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="ストーリー坊ちゃん">
+  <meta name="theme-color" content="#ffffff">
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+  <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
+  <script>
+  /* manifest は http/https のときだけ（file:// で開くと読み込めずにエラーが出るため） */
+  if (location.protocol !== 'file:') {
+    var m = document.createElement('link'); m.rel = 'manifest'; m.href = 'manifest.webmanifest'; document.head.appendChild(m);
+  }
+  </script>
+  <link rel="stylesheet" href="css/app.css?v=2026102607">
 </head>
 <body data-view="map">
   <header class="app-header">
@@ -214,21 +228,21 @@
 
   <!-- 読み込み順に意味があります（ES Modulesは使わない方針）。
        ?v= は版番号：公開版を更新したら全部を新しい番号にする（古いファイルがブラウザに残らないように） -->
-  <script src="js/config.js?v=2026102602"></script>
-  <script src="js/util.js?v=2026102602"></script>
-  <script src="js/model.js?v=2026102602"></script>
-  <script src="js/storage.js?v=2026102602"></script>
-  <script src="js/map.js?v=2026102602"></script>
-  <script src="js/tray.js?v=2026102602"></script>
-  <script src="js/timeline.js?v=2026102602"></script>
-  <script src="js/draw.js?v=2026102602"></script>
-  <script src="js/camera.js?v=2026102602"></script>
-  <script src="js/vconte.js?v=2026102602"></script>
-  <script src="js/clipboard.js?v=2026102602"></script>
-  <script src="js/outline.js?v=2026102602"></script>
-  <script src="js/zip.js?v=2026102602"></script>
-  <script src="js/project.js?v=2026102602"></script>
-  <script src="js/pdf.js?v=2026102602"></script>
-  <script src="js/app.js?v=2026102602"></script>
+  <script src="js/config.js?v=2026102607"></script>
+  <script src="js/util.js?v=2026102607"></script>
+  <script src="js/model.js?v=2026102607"></script>
+  <script src="js/storage.js?v=2026102607"></script>
+  <script src="js/map.js?v=2026102607"></script>
+  <script src="js/tray.js?v=2026102607"></script>
+  <script src="js/timeline.js?v=2026102607"></script>
+  <script src="js/draw.js?v=2026102607"></script>
+  <script src="js/camera.js?v=2026102607"></script>
+  <script src="js/vconte.js?v=2026102607"></script>
+  <script src="js/clipboard.js?v=2026102607"></script>
+  <script src="js/outline.js?v=2026102607"></script>
+  <script src="js/zip.js?v=2026102607"></script>
+  <script src="js/project.js?v=2026102607"></script>
+  <script src="js/pdf.js?v=2026102607"></script>
+  <script src="js/app.js?v=2026102607"></script>
 </body>
 </html>

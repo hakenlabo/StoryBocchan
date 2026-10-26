@@ -4,3 +4,9 @@
 exports/
 .DS_Store
 Thumbs.db
+
+# Xcode（iPadアプリ）の作業ファイル
+xcuserdata/
+*.xcuserstate
+ios/build/
+DerivedData/
