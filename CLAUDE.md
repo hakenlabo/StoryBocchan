@@ -253,7 +253,11 @@ XMindの良さは「ポストイットのようにつけたり剥がしたりで
 ### ムービー書き出し（MP4）
 
 - Vコンテの「🎬 ムービー書き出し」。大きさは 720p／1080p（長い辺＝size×16/9、画面比に合わせる）。`{作品名}_Vコンテ.mp4` を保存（iPadアプリは共有シート）。
-- 1コマずつ `AP.Vconte.renderFrame` で描く → `VideoEncoder`（H.264。avc1.640028→4d0028→42002a→42001f の順に使えるものを探す、avc形式）→ `AP.Mp4.build`。
+- 1コマずつ `AP.Vconte.renderFrame` で描く → `VideoEncoder`（H.264、avc形式）→ `AP.Mp4.build`。
+  - **iPad の WebKit は Main／High（avc1.4d…・64…）を isConfigSupported で「使える」と答えるのに、何も出力せず止まる**（シミュレータで確認）。
+    だから Baseline（42002a→42001f）を先に試し、さらに数コマ試し符号化（`MOVIE_PROBE_MS`）して本当に出てきた設定だけ使う。
+  - 本番中も `MOVIE_STALL_MS` 出力がなければ「止まった」として次の設定、最後は録画に切り替える（いつまでも終わらない、を作らない）。
+  - 書き出し中（busy）は close() が効かないので、終わったら finally で閉じる。
   再生しながら録るのではないので尺より速く終わる。画面のVコンテと同じ（シーン構成・カメラ・重ね表示のチェック）。音は入らない。
 - MP4：moov を先頭（faststart）、timescale＝fps×100・1コマ＝100、Bフレームなし（ctts なし）、キーフレームは `MOVIE_KEYFRAME_SEC` ごと。画質は `MOVIE_BITS_PER_PIXEL`。
 - VideoEncoder がないブラウザ（古い Safari など）は、キャンバスを MediaRecorder で実時間録画（mp4 が無理なら webm）。

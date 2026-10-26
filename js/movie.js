@@ -36,20 +36,57 @@
     setTimeout(function () { URL.revokeObjectURL(url); }, 60000);
   }
 
-  // 使える H.264 の設定を探す（端末によって対応している種類が違う）
-  async function findConfig(w, h, fps) {
-    if (typeof VideoEncoder === 'undefined' || typeof VideoFrame === 'undefined') return null;
+  function wait(ms) { return new Promise(function (r) { setTimeout(r, ms); }); }
+  function withTimeout(p, ms) {
+    return Promise.race([p, wait(ms).then(function () { throw new Error('stalled'); })]);
+  }
+
+  // 使える H.264 の設定を探す（端末によって対応している種類が違う）。
+  // iPad の WebKit は Main／High（4d・64）を「使える」と答えるのに、実際には何も出てこないことがある。
+  // だから Baseline（42）を先に試し、さらに数コマ試しに符号化して、本当に出てきた設定だけを返す。
+  async function findConfigs(w, h, fps) {
+    if (typeof VideoEncoder === 'undefined' || typeof VideoFrame === 'undefined') return [];
     const bitrate = Math.round(w * h * fps * C.MOVIE_BITS_PER_PIXEL);
-    const codecs = ['avc1.640028', 'avc1.4d0028', 'avc1.42002a', 'avc1.42001f'];
+    const codecs = ['avc1.42002a', 'avc1.42001f', 'avc1.4d0028', 'avc1.640028'];
+    const found = [];
     for (let i = 0; i < codecs.length; i++) {
-      const cfg = { codec: codecs[i], width: w, height: h, framerate: fps, bitrate: bitrate,
-        avc: { format: 'avc' }, latencyMode: 'realtime' };
+      const cfg = { codec: codecs[i], width: w, height: h, framerate: fps, bitrate: bitrate, avc: { format: 'avc' } };
       try {
         const r = await VideoEncoder.isConfigSupported(cfg);
-        if (r && r.supported) return r.config || cfg;
+        if (r && r.supported && await probe(cfg, w, h)) found.push(cfg);
       } catch (e) { /* 次を試す */ }
+      if (found.length >= 2) break;   // 予備が1つあれば十分
     }
-    return null;
+    return found;
+  }
+
+  // 試しに3コマ符号化して、決めた時間内に設定（avcC）とコマが出てくるか
+  async function probe(cfg, w, h) {
+    let outs = 0, desc = false, enc = null;
+    try {
+      enc = new VideoEncoder({
+        output: function (chunk, meta) { outs++; if (meta && meta.decoderConfig && meta.decoderConfig.description) desc = true; },
+        error: function () {},
+      });
+      enc.configure(cfg);
+      const cv = document.createElement('canvas');
+      cv.width = w;
+      cv.height = h;
+      const ctx = cv.getContext('2d');
+      for (let f = 0; f < 3; f++) {
+        ctx.fillStyle = f % 2 ? '#fff' : '#ddd';
+        ctx.fillRect(0, 0, w, h);
+        const vf = new VideoFrame(cv, { timestamp: f * 40000, duration: 40000 });
+        enc.encode(vf, { keyFrame: f === 0 });
+        vf.close();
+      }
+      await withTimeout(enc.flush(), C.MOVIE_PROBE_MS);
+      return outs >= 3 && desc;
+    } catch (e) {
+      return false;
+    } finally {
+      try { if (enc && enc.state !== 'closed') enc.close(); } catch (e) { /* 何もしない */ }
+    }
   }
 
   // ---- WebCodecs で書き出す ----
@@ -63,8 +100,10 @@
     const samples = [];
     let avcC = null;
     let failure = null;
+    let lastOutput = performance.now();
     const encoder = new VideoEncoder({
       output: function (chunk, meta) {
+        lastOutput = performance.now();
         if (meta && meta.decoderConfig && meta.decoderConfig.description && !avcC) {
           const d = meta.decoderConfig.description;
           avcC = ArrayBuffer.isView(d) ? new Uint8Array(d.buffer, d.byteOffset, d.byteLength).slice() : new Uint8Array(d).slice();
@@ -88,12 +127,20 @@
       // 符号化が追いつくまで少し待つ（メモリを使いすぎないように）。進み具合も見せる
       if (encoder.encodeQueueSize > 8 || f % 6 === 0) {
         onProgress(f / total);
-        await new Promise(function (r) { setTimeout(r, 0); });
-        while (encoder.encodeQueueSize > 8) await new Promise(function (r) { setTimeout(r, 5); });
+        await wait(0);
+        while (encoder.encodeQueueSize > 8) {
+          if (failure) throw failure;
+          if (cancelled) { encoder.close(); return null; }
+          if (performance.now() - lastOutput > C.MOVIE_STALL_MS) { encoder.close(); throw new Error('stalled'); }
+          await wait(5);
+        }
       }
     }
-    await encoder.flush();
-    encoder.close();
+    try {
+      await withTimeout(encoder.flush(), C.MOVIE_STALL_MS);
+    } finally {
+      if (encoder.state !== 'closed') encoder.close();
+    }
     if (failure) throw failure;
     if (!avcC) throw new Error('この端末では映像の設定を取り出せませんでした');
     samples.sort(function (a, b) { return a.ts - b.ts; });
@@ -145,14 +192,23 @@
     const fps = Store.settings().fps;
     const sz = frameSize(choice.size);
     setRunning(true);
+    let saved = false;
     try {
-      const cfg = await findConfig(sz.w, sz.h, fps);
-      let blob, ext = 'mp4';
-      if (cfg) {
+      setStatus('準備中…');
+      const cfgs = await findConfigs(sz.w, sz.h, fps);
+      let blob, ext = 'mp4', done = false;
+      for (let i = 0; i < cfgs.length && !done && !cancelled; i++) {
         setStatus('書き出し中…（' + sz.w + '×' + sz.h + '）');
-        blob = await encodeWebCodecs(cfg, sz.w, sz.h, fps, setProgress);
-      } else {
-        setStatus('このブラウザは速い書き出しに対応していないので、再生しながら録画しています（尺と同じ時間がかかります）');
+        try {
+          blob = await encodeWebCodecs(cfgs[i], sz.w, sz.h, fps, setProgress);
+          done = true;
+        } catch (e) {
+          if (!e || e.message !== 'stalled') throw e;
+          console.warn('ムービーの符号化が止まったので切り替えます', cfgs[i].codec);
+        }
+      }
+      if (!done && !cancelled) {
+        setStatus('この端末は速い書き出しに対応していないので、再生しながら録画しています（尺と同じ時間がかかります）');
         blob = await recordRealtime(sz.w, sz.h, fps, setProgress);
         if (blob && !/mp4/.test(blob.type)) ext = 'webm';
       }
@@ -160,13 +216,15 @@
       const name = fileName(ext);
       download(blob, name);
       U.toast('「' + name + '」を保存しました（' + (blob.size / 1048576).toFixed(1) + 'MB）');
-      close();
+      saved = true;
     } catch (e) {
       console.error(e);
       U.toast('ムービーを書き出せませんでした：' + (e && e.message ? e.message : e));
     } finally {
       busy = false;
       setRunning(false);
+      setStatus('');
+      if (saved) close();   // busy の間は close() が効かないので、ここで閉じる
       AP.Vconte.show();
     }
   }
@@ -262,10 +320,10 @@
     build: async function (size) {
       const fps = Store.settings().fps;
       const sz = frameSize(size || 720);
-      const cfg = await findConfig(sz.w, sz.h, fps);
-      if (!cfg) return null;
       cancelled = false;
-      return encodeWebCodecs(cfg, sz.w, sz.h, fps, function () {});
+      const cfgs = await findConfigs(sz.w, sz.h, fps);
+      if (!cfgs.length) return null;
+      return encodeWebCodecs(cfgs[0], sz.w, sz.h, fps, function () {});
     },
   };
 })();
