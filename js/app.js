@@ -159,6 +159,28 @@
     b.textContent = '☑ 複数選択' + (n ? '（' + n + '）' : '');
   }
 
+  // URL に ?debug=1 を付けると、画面の大きさや拡大率を表示する（iPadで表示がおかしいときの確認用）
+  function setupDebug() {
+    if (!/[?&]debug=1/.test(location.search)) return;
+    const box = document.createElement('div');
+    box.style.cssText = 'position:fixed;left:6px;bottom:6px;z-index:999;padding:6px 8px;font:12px/1.5 ui-monospace,Menlo,monospace;' +
+      'background:rgba(0,0,0,.8);color:#0f0;border-radius:6px;pointer-events:none;white-space:pre';
+    document.body.appendChild(box);
+    const show = function () {
+      const vv = window.visualViewport;
+      box.textContent = 'ver ' + C.APP_VERSION +
+        '\ninner ' + innerWidth + 'x' + innerHeight + '  doc ' + document.documentElement.scrollWidth + 'x' + document.documentElement.scrollHeight +
+        '\nscreen ' + screen.width + 'x' + screen.height + '  dpr ' + devicePixelRatio +
+        '\nvisual ' + (vv ? Math.round(vv.width) + 'x' + Math.round(vv.height) + ' scale ' + vv.scale.toFixed(3) : '-') +
+        '\nviewport ' + (document.getElementById('vp') || {}).content +
+        '\n' + navigator.userAgent.slice(0, 90);
+    };
+    show();
+    window.addEventListener('resize', show);
+    if (window.visualViewport) window.visualViewport.addEventListener('resize', show);
+    setInterval(show, 1000);
+  }
+
   function setupKeys() {
     document.addEventListener('keydown', function (e) {
       const tag = (e.target.tagName || '').toLowerCase();
@@ -201,12 +223,11 @@
     const vpMeta = document.querySelector('meta[name="viewport"]');
     document.addEventListener('focusout', function (e) {
       const tag = (e.target.tagName || '').toLowerCase();
-      if (!vpMeta || (tag !== 'input' && tag !== 'textarea' && tag !== 'select')) return;
-      if (window.visualViewport && window.visualViewport.scale <= 1.01) return;
-      const c = vpMeta.getAttribute('content');
-      vpMeta.setAttribute('content', c + ', minimum-scale=1');
-      setTimeout(function () { vpMeta.setAttribute('content', c); }, 50);
+      if (!vpMeta || !window.AP_FIT || (tag !== 'input' && tag !== 'textarea' && tag !== 'select')) return;
+      vpMeta.setAttribute('content', vpMeta.getAttribute('content').replace('user-scalable=no', 'user-scalable=yes'));
+      setTimeout(window.AP_FIT, 50); // index.html の「画面に合わせる」設定に戻す
     });
+    setupDebug();
 
     const backend = await Storage.init();
     Storage.onStatus(setStatus);

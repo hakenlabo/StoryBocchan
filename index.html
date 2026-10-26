@@ -2,9 +2,35 @@
 <html lang="ja">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+  <meta id="vp" name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+  <script>
+  /* 狭い画面（iPad mini の縦など）では、アプリ全体を画面の幅に縮めて表示する。
+     MIN_W より狭い画面では「幅 MIN_W のページ」として描き、Safari に画面の幅まで縮めてもらう（拡大・縮小は固定）。 */
+  (function () {
+    var MIN_W = 900;
+    var meta = document.getElementById('vp');
+    function screenW() {
+      var portrait = window.matchMedia && window.matchMedia('(orientation: portrait)').matches;
+      return portrait ? Math.min(screen.width, screen.height) : Math.max(screen.width, screen.height);
+    }
+    function fit() {
+      var w = screenW(), c;
+      if (w < MIN_W) {
+        var k = Math.floor(w / MIN_W * 1000) / 1000;
+        c = 'width=' + MIN_W + ', initial-scale=' + k + ', minimum-scale=' + k + ', maximum-scale=' + k + ', user-scalable=no, viewport-fit=cover';
+      } else {
+        c = 'width=device-width, initial-scale=1, minimum-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover';
+      }
+      if (meta.getAttribute('content') !== c) meta.setAttribute('content', c);
+    }
+    fit();
+    window.addEventListener('orientationchange', function () { setTimeout(fit, 300); });
+    window.addEventListener('resize', fit);
+    window.AP_FIT = fit;
+  })();
+  </script>
   <title>ストーリー坊ちゃん</title>
-  <link rel="stylesheet" href="css/app.css">
+  <link rel="stylesheet" href="css/app.css?v=2026102601">
 </head>
 <body data-view="map">
   <header class="app-header">
@@ -186,22 +212,23 @@
 
   <div id="toast" class="toast" role="status"></div>
 
-  <!-- 読み込み順に意味があります（ES Modulesは使わない方針） -->
-  <script src="js/config.js"></script>
-  <script src="js/util.js"></script>
-  <script src="js/model.js"></script>
-  <script src="js/storage.js"></script>
-  <script src="js/map.js"></script>
-  <script src="js/tray.js"></script>
-  <script src="js/timeline.js"></script>
-  <script src="js/draw.js"></script>
-  <script src="js/camera.js"></script>
-  <script src="js/vconte.js"></script>
-  <script src="js/clipboard.js"></script>
-  <script src="js/outline.js"></script>
-  <script src="js/zip.js"></script>
-  <script src="js/project.js"></script>
-  <script src="js/pdf.js"></script>
-  <script src="js/app.js"></script>
+  <!-- 読み込み順に意味があります（ES Modulesは使わない方針）。
+       ?v= は版番号：公開版を更新したら全部を新しい番号にする（古いファイルがブラウザに残らないように） -->
+  <script src="js/config.js?v=2026102601"></script>
+  <script src="js/util.js?v=2026102601"></script>
+  <script src="js/model.js?v=2026102601"></script>
+  <script src="js/storage.js?v=2026102601"></script>
+  <script src="js/map.js?v=2026102601"></script>
+  <script src="js/tray.js?v=2026102601"></script>
+  <script src="js/timeline.js?v=2026102601"></script>
+  <script src="js/draw.js?v=2026102601"></script>
+  <script src="js/camera.js?v=2026102601"></script>
+  <script src="js/vconte.js?v=2026102601"></script>
+  <script src="js/clipboard.js?v=2026102601"></script>
+  <script src="js/outline.js?v=2026102601"></script>
+  <script src="js/zip.js?v=2026102601"></script>
+  <script src="js/project.js?v=2026102601"></script>
+  <script src="js/pdf.js?v=2026102601"></script>
+  <script src="js/app.js?v=2026102601"></script>
 </body>
 </html>

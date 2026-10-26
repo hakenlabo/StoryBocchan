@@ -34,14 +34,19 @@ XMindの良さは「ポストイットのようにつけたり剥がしたりで
     - 画面からはみ出す要素を作らない（見出しは狭い画面で詰める・ツールバーは横スクロール）。はみ出すと iOS がページを広げる。
     - 指の端末では入力欄（input/select/textarea）の文字を16px以上にする（16px未満だとタップで自動拡大）。
     - ダブルタップ拡大を止めるため touch-action: manipulation（絵・マップ・タイムラインは none）。body は position:fixed。
-    - 入力欄を離れたら、拡大されていれば viewport を書き換えて等倍に戻す（app.js）。
+    - 入力欄を離れたら viewport を書き直して、決めた拡大率に戻す（app.js）。
+    - **画面の幅が 900px 未満（iPad mini の縦など）では、ページを幅900pxとして描いて画面に縮める**（index.html の先頭の小さなスクリプト）。
+      拡大率は固定（勝手な拡大・ピンチ拡大をさせない）。横向きなど900px以上は等倍。
 
 ## 公開（GitHub Pages）
 
 - リポジトリ：https://github.com/t1912-hub/StoryBocchan （public）
 - 公開URL：https://t1912-hub.github.io/StoryBocchan/ （main ブランチのルートをそのまま配信。`.nojekyll` で Jekyll の加工を止めている）
 - 更新は main に push するだけで、数十秒〜2分後に公開版に反映される（ブラウザのキャッシュが残っていたら再読み込み）。
-- 手順：変更 → file:// で動作確認 → コミット → `git push`（SSH、remote は git@github.com:t1912-hub/StoryBocchan.git）。
+- 手順：変更 → file:// で動作確認 → **版番号を上げる** → コミット → `git push`（SSH、remote は git@github.com:t1912-hub/StoryBocchan.git）。
+  - 版番号：index.html の全 `?v=` と `config.APP_VERSION` を同じ新しい番号に（例 2026102602）。
+    GitHub Pages は最大10分ほどブラウザにファイルを残させるので、番号を変えないと iPad などで古いCSS/JSのままになる。
+  - 表示の確認用に、URL の末尾に `?debug=1` を付けると画面の大きさ・拡大率・版番号が出る。
 - 作品データは各ブラウザの IndexedDB（オリジン単位）にあり、リポジトリには入らない。
   file:// で使った作品と Web 版の作品は別のオリジンなので共有されない（zip で移す）。
 
