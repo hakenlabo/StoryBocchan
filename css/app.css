@@ -804,3 +804,42 @@ body[data-view="outline"] .toolbar > * { visibility: hidden; }
 .tl-resizer::after { content: ""; position: absolute; left: 50%; top: 3px; width: 44px; height: 4px; margin-left: -22px; border-radius: 2px; background: #c9ced6; }
 .tl-resizer:hover::after { background: var(--accent); }
 body[data-view="timeline"] .tl-resizer { display: none; }
+
+/* ---- 箇条書き：参照テキスト（左）と箇条書き（右） ---- */
+.ol-body { flex: 1; min-height: 0; display: flex; }
+.ol-body > .ol-scroll { flex: 1; min-width: 0; }
+.ol-ref { display: none; }
+.outline.with-ref .ol-ref {
+  display: flex;
+  flex-direction: column;
+  width: 46%;
+  min-width: 260px;
+  border-right: 1px solid var(--border);
+  background: #fbfaf6;
+}
+.outline.with-ref .ol-list { margin: 0; max-width: none; }
+#ol-ref-toggle.active { background: var(--ink); color: #fff; border-color: var(--ink); }
+.ol-ref-bar { display: flex; align-items: center; gap: 6px; padding: 8px 10px; border-bottom: 1px solid #eceae2; flex-wrap: wrap; }
+.ol-ref-title { font-weight: 700; font-size: 13px; }
+.ol-ref-count { flex: 1; font-size: 11px; color: var(--sub); }
+.ol-ref-bar button { min-height: 32px; font-size: 13px; }
+.ol-ref-bar .primary { background: var(--accent); color: #fff; border-color: var(--accent); }
+.ol-ref-text {
+  flex: 1;
+  min-height: 0;
+  padding: 14px 16px;
+  border: none;
+  outline: none;
+  resize: none;
+  background: transparent;
+  font: inherit;
+  font-size: 15px;
+  line-height: 1.8;
+  color: var(--ink);
+}
+.ol-ref-text::selection { background: #ffe58a; }
+/* 縦長の画面（iPad縦など）では上下に並べる */
+@media (max-width: 820px), (orientation: portrait) and (max-width: 1100px) {
+  .outline.with-ref .ol-body { flex-direction: column; }
+  .outline.with-ref .ol-ref { width: auto; min-width: 0; height: 42%; border-right: none; border-bottom: 1px solid var(--border); }
+}

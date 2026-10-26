@@ -398,6 +398,113 @@
     });
   }
 
+  // ------------------------------------------------------------
+  // 参照テキスト（左のパネル）
+  // ------------------------------------------------------------
+  const REF_KEY = 'anime-prepro:outlineRef';
+  let refEl;
+  let refSelf = false;
+
+  function setRefOpen(open) {
+    section.classList.toggle('with-ref', open);
+    document.getElementById('ol-ref-toggle').classList.toggle('active', open);
+    try { localStorage.setItem(REF_KEY, open ? '1' : '0'); } catch (e) { /* 無視 */ }
+  }
+
+  function updateRefCount() {
+    document.getElementById('ol-ref-count').textContent = refEl.value ? refEl.value.length + '文字' : '';
+  }
+
+  // 選んだ文（なければカーソルのある行）を、最後に触った行の下に箇条書きとして入れる
+  function sendFromRef() {
+    let text = refEl.value.slice(refEl.selectionStart, refEl.selectionEnd);
+    if (!text.trim()) {
+      const v = refEl.value, p = refEl.selectionStart;
+      const s = v.lastIndexOf('\n', p - 1) + 1;
+      let e = v.indexOf('\n', p);
+      if (e < 0) e = v.length;
+      text = v.slice(s, e);
+    }
+    const lines = AP.Clipboard.parseLines(text);
+    if (!lines.length) return U.toast('箇条書きにする文を選んでください');
+    let parentId = null, index = Store.treeChildren(null).length;
+    if (lastFocusedId && lastFocusedId !== NEW_ROW && Store.get(lastFocusedId) && Store.get(lastFocusedId).status === 'active') {
+      const x = context(lastFocusedId);
+      parentId = x.parentId;
+      index = x.idx + 1;
+    }
+    Store.checkpoint();
+    const created = AP.Clipboard.importLines(lines, { parentId: parentId, index: index });
+    Store.checkpoint();
+    if (created.length) {
+      lastFocusedId = created[created.length - 1].id; // 続けて送ると、その下に並んでいく
+      render();
+      const row = list.querySelector('.ol-row[data-id="' + lastFocusedId + '"]');
+      if (row) row.scrollIntoView({ block: 'nearest' });
+      U.toast(created.length + '行を箇条書きに入れました');
+    }
+  }
+
+  function setupReference() {
+    refEl = document.getElementById('ol-ref-text');
+    refEl.value = Store.reference();
+    updateRefCount();
+    let open = false;
+    try { open = localStorage.getItem(REF_KEY) === '1'; } catch (e) { /* 無視 */ }
+    setRefOpen(open || !!Store.reference());
+    document.getElementById('ol-ref-toggle').addEventListener('click', function () {
+      setRefOpen(!section.classList.contains('with-ref'));
+    });
+    refEl.addEventListener('input', function () {
+      refSelf = true;
+      Store.setReference(refEl.value);
+      refSelf = false;
+      updateRefCount();
+    });
+    refEl.addEventListener('keydown', function (e) {
+      e.stopPropagation();
+      if (e.isComposing || e.keyCode === 229) return;
+      if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) { e.preventDefault(); sendFromRef(); }
+    });
+    const sendBtn = document.getElementById('ol-ref-send');
+    sendBtn.addEventListener('pointerdown', function (e) { e.preventDefault(); }); // 選んだ範囲を消さない
+    sendBtn.addEventListener('click', sendFromRef);
+    // テキストファイルを開く
+    const file = document.createElement('input');
+    file.type = 'file';
+    file.accept = '.txt,.md,text/plain';
+    file.style.display = 'none';
+    document.body.appendChild(file);
+    document.getElementById('ol-ref-open').addEventListener('click', function () { file.click(); });
+    file.addEventListener('change', function () {
+      const f = file.files && file.files[0];
+      file.value = '';
+      if (!f) return;
+      f.text().then(function (t) {
+        const apply = function () {
+          refEl.value = t.replace(/\r\n?/g, '\n');
+          Store.checkpoint();
+          Store.setReference(refEl.value);
+          Store.checkpoint();
+          updateRefCount();
+          setRefOpen(true);
+          U.toast('「' + f.name + '」を読み込みました');
+        };
+        if (!refEl.value.trim()) return apply();
+        U.choose('参照テキストを置き換えますか？', '今の参照テキスト（' + refEl.value.length + '文字）は「' + f.name + '」に置き換わります（⌘Zで戻せます）。',
+          [{ label: '置き換える', value: 'ok', primary: true }]).then(function (v) { if (v === 'ok') apply(); });
+      });
+    });
+    // 取り消しやプロジェクトの切り替えで中身が変わったら合わせる
+    Store.subscribe(function (reason) {
+      if (refSelf) return;
+      if (reason === 'history' || reason === 'load' || reason === 'reference') {
+        if (refEl.value !== Store.reference()) { refEl.value = Store.reference(); updateRefCount(); }
+        if (reason === 'load' && Store.reference()) setRefOpen(true);
+      }
+    });
+  }
+
   function show() {
     render();
     if (!list.querySelector('.ol-row:not(.ol-new)')) focusRow(NEW_ROW, 0);
@@ -431,6 +538,7 @@
       if (b) focusRow(b.closest('.ol-row').dataset.id);
     });
     setupButtons();
+    setupReference();
     Store.subscribe(function (reason) {
       if (!isVisible() || selfUpdate || reason === 'move') return;
       render();

@@ -94,6 +94,7 @@
     <section id="outline" class="outline">
       <div class="ol-bar">
         <span class="ol-title">箇条書き</span>
+        <button id="ol-ref-toggle" type="button" title="台本やあらすじなどの長い文を左に出して、見ながら箇条書きにする">📖 参照テキスト</button>
         <span class="ol-hint">1行＝1枚のカード。Enter 次の行 ／ Tab 字下げ ／ Shift+Tab 字上げ ／ ⌥↑↓ 並べ替え ／ 空の行で Backspace 消す ／ 文字を選ばずに ⌘C・⌘X・⌘V で行ごと</span>
         <span class="ol-buttons">
           <button type="button" data-ol="outdent" title="字上げ（Shift+Tab）">← 字上げ</button>
@@ -106,7 +107,18 @@
           <button type="button" data-ol="paste" title="コピーした行をこの行の下に（⌘V）">貼り付け</button>
         </span>
       </div>
-      <div class="ol-scroll"><div id="ol-list" class="ol-list"></div></div>
+      <div class="ol-body">
+        <aside class="ol-ref">
+          <div class="ol-ref-bar">
+            <span class="ol-ref-title">参照テキスト</span>
+            <span id="ol-ref-count" class="ol-ref-count"></span>
+            <button id="ol-ref-open" type="button" title="テキストファイル（.txt）を読み込む">ファイルを開く</button>
+            <button id="ol-ref-send" type="button" class="primary" title="選んだ文（選んでいなければカーソルの行）を箇条書きの行にする（⌘Enter）">→ 箇条書きへ</button>
+          </div>
+          <textarea id="ol-ref-text" class="ol-ref-text" placeholder="台本・あらすじ・メモなどの長い文をここに貼り付けてください。&#10;読みながら右に箇条書きでまとめられます。&#10;&#10;文を選んで「→ 箇条書きへ」（⌘Enter）を押すと、その文が箇条書きの行になります。&#10;（文は作品と一緒に保存されます）"></textarea>
+        </aside>
+        <div class="ol-scroll"><div id="ol-list" class="ol-list"></div></div>
+      </div>
     </section>
 
     <section id="vconte" class="vconte">

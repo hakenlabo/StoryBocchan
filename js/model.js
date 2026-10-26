@@ -57,6 +57,7 @@
     p.version = p.version || PROJECT_VERSION;
     p.settings = Object.assign(defaultSettings(), p.settings || {});
     p.sequence = Array.isArray(p.sequence) ? p.sequence : null; // Vコンテのシーン構成 [{id, on}]。null＝全部をツリーの順に
+    p.reference = typeof p.reference === 'string' ? p.reference : ''; // 箇条書きで参照する長い文（台本・あらすじなど）
     p.cards = (p.cards || []).map(function (c) {
       const base = makeCard();
       const card = Object.assign(base, c);
@@ -114,13 +115,14 @@
       title: project.title,
       settings: Object.assign({}, project.settings),
       sequence: project.sequence ? project.sequence.map(function (x) { return Object.assign({}, x); }) : null,
+      reference: project.reference,
       cards: project.cards.map(function (c) { return Object.assign({}, c); }),
     };
   }
 
   function groupOf(reason) {
     if (reason === 'move') return 'move';
-    if (reason === 'update' || reason === 'title') return 'text';
+    if (reason === 'update' || reason === 'title' || reason === 'reference') return 'text';
     if (reason === 'duration') return 'duration';
     return reason + ':' + Math.random(); // それ以外は毎回べつの操作
   }
@@ -159,6 +161,7 @@
     project.title = state.title;
     project.settings = Object.assign({}, state.settings);
     project.sequence = state.sequence ? state.sequence.map(function (x) { return Object.assign({}, x); }) : null;
+    project.reference = state.reference || '';
     project.cards = state.cards.map(function (c) { return Object.assign({}, c); });
     reindex();
     applying = true;
@@ -216,6 +219,8 @@
   };
 
   S.setTitle = function (title) { project.title = title; emit('title'); };
+  S.reference = function () { return project.reference || ''; };
+  S.setReference = function (text) { project.reference = text; emit('reference'); };
   S.setSetting = function (key, value) { project.settings[key] = value; emit('settings'); };
 
   S.createCard = function (props) {
