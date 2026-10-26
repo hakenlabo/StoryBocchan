@@ -35,7 +35,8 @@ XMindの良さは「ポストイットのようにつけたり剥がしたりで
 
 - リポジトリ：https://github.com/t1912-hub/StoryBocchan （public）
 - 公開URL：https://t1912-hub.github.io/StoryBocchan/ （main ブランチのルートをそのまま配信。`.nojekyll` で Jekyll の加工を止めている）
-- 更新は main に push するだけで、1〜2分後に公開版に反映される。
+- 更新は main に push するだけで、数十秒〜2分後に公開版に反映される（ブラウザのキャッシュが残っていたら再読み込み）。
+- 手順：変更 → file:// で動作確認 → コミット → `git push`（SSH、remote は git@github.com:t1912-hub/StoryBocchan.git）。
 - 作品データは各ブラウザの IndexedDB（オリジン単位）にあり、リポジトリには入らない。
   file:// で使った作品と Web 版の作品は別のオリジンなので共有されない（zip で移す）。
 
