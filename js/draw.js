@@ -113,6 +113,7 @@
   let scale = 1;            // 画面px / 絵の単位
   let cur = null;           // 描いている途中の線
   let penSeen = false;
+  let lastPointer = null;   // 診断表示（?debug=1）用
 
   function isOpen() { return !!cardId; }
 
@@ -120,12 +121,15 @@
     const card = Store.get(id);
     if (!card) return;
     if (AP.MapView.isEditing()) AP.MapView.finishEdit();
+    if (document.activeElement && document.activeElement.blur) document.activeElement.blur(); // キーボードを閉じてから
+    resetScroll();
     cardId = id;
     drawId = Store.source(card).id;
     strokes = Store.get(drawId).strokes || [];
     undoStack = [];
     redoStack = [];
     panel.hidden = false;
+    fitPanel();
     document.body.classList.add('drawing');
     AP.MapView.select(drawId);
     updateTitle();
@@ -167,6 +171,28 @@
     cardId = null;
     panel.hidden = true;
     document.body.classList.remove('drawing');
+    resetScroll();
+  }
+
+  // iPad Safari：キーボードの出し入れでページが少しずれたまま残り、ペンの位置と線がずれることがあるので、元に戻す
+  function resetScroll() {
+    window.scrollTo(0, 0);
+    document.documentElement.scrollTop = 0;
+    document.body.scrollTop = 0;
+  }
+
+  // パネルの高さは実際の表示の高さに合わせる（iPad の CSS の画面単位はキーボードやバーで食い違うことがある）
+  function fitPanel() {
+    panel.style.height = window.innerHeight + 'px';
+    panel.style.width = window.innerWidth + 'px';
+  }
+
+  function onViewportChange() {
+    if (!cardId) return;
+    const a = document.activeElement;
+    const typing = a && (a.tagName === 'TEXTAREA' || a.tagName === 'INPUT' || a.tagName === 'SELECT');
+    if (!typing) { resetScroll(); fitPanel(); }
+    layout();
   }
 
   function updateTitle() {
@@ -296,12 +322,16 @@
 
   // ---- 入力 ----
   function toPoint(e) {
+    // いま実際に表示されている大きさから計算する（表示が変わった直後でもペンの位置どおりになるように）
     const r = canvas.getBoundingClientRect();
+    const k = r.width / (C.DRAW_BASE_W * paperOf().w) || scale;
     let p = e.pointerType === 'pen' ? e.pressure : C.DRAW_NONPEN_PRESSURE;
     if (e.pointerType === 'pen' && !p) p = 0.5; // 筆圧0で届く端末向け
+    lastPointer = { type: e.pointerType, x: Math.round(e.clientX), y: Math.round(e.clientY), p: p,
+      rect: [Math.round(r.left), Math.round(r.top), Math.round(r.width), Math.round(r.height)] };
     return [
-      Math.round((e.clientX - r.left) / scale * 10) / 10,
-      Math.round((e.clientY - r.top) / scale * 10) / 10,
+      Math.round((e.clientX - r.left) / k * 10) / 10,
+      Math.round((e.clientY - r.top) / k * 10) / 10,
       Math.round(p * 100) / 100,
     ];
   }
@@ -456,13 +486,23 @@
     canvas.addEventListener('pointerup', onPointerUp);
     canvas.addEventListener('pointercancel', onPointerUp);
     document.addEventListener('keydown', onKeyDown, true);
-    window.addEventListener('resize', layout);
+    window.addEventListener('resize', onViewportChange);
+    if (window.visualViewport) window.visualViewport.addEventListener('resize', onViewportChange);
+    // 内容・セリフ欄を離れたら（キーボードが閉じたら）ずれを戻して描き直す
+    panel.addEventListener('focusout', function () { setTimeout(onViewportChange, 120); });
     updateButtons();
   }
 
   AP.Draw = {
     init: init,
     currentStrokes: function () { return cardId ? strokes : []; },
+    debugInfo: function () {
+      if (!cardId) return '';
+      const r = canvas.getBoundingClientRect(), pr = panel.getBoundingClientRect();
+      return 'draw panel ' + Math.round(pr.width) + 'x' + Math.round(pr.height) + '@' + Math.round(pr.top) +
+        '  canvas ' + Math.round(r.width) + 'x' + Math.round(r.height) + '@' + Math.round(r.left) + ',' + Math.round(r.top) +
+        (lastPointer ? '\npointer ' + lastPointer.type + ' ' + lastPointer.x + ',' + lastPointer.y + ' p' + lastPointer.p.toFixed(2) : '');
+    },
     // ほかのカードからコピーした絵を重ねる（取り消し可）
     pasteStrokes: function (list) {
       if (!cardId) return;

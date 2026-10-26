@@ -173,6 +173,8 @@
         '\nscreen ' + screen.width + 'x' + screen.height + '  dpr ' + devicePixelRatio +
         '\nvisual ' + (vv ? Math.round(vv.width) + 'x' + Math.round(vv.height) + ' scale ' + vv.scale.toFixed(3) : '-') +
         '\nviewport ' + (document.getElementById('vp') || {}).content +
+        '\nscroll ' + Math.round(window.scrollX) + ',' + Math.round(window.scrollY) +
+        (AP.Draw.isOpen() ? '\n' + AP.Draw.debugInfo() : '') +
         '\n' + navigator.userAgent.slice(0, 90);
     };
     show();
@@ -220,12 +222,16 @@
     // ページ自体のピンチズーム（Safari）を止める。マップのズームは map.js が処理する
     document.addEventListener('gesturestart', function (e) { e.preventDefault(); });
     // 入力欄を離れたら、iOS が勝手に拡大した表示を元に戻す（viewport を一度書き換えると等倍に戻る）
-    const vpMeta = document.querySelector('meta[name="viewport"]');
+    // 入力欄を離れたら（キーボードが閉じたら）、iPad でずれたまま残ったページの位置を戻す
     document.addEventListener('focusout', function (e) {
       const tag = (e.target.tagName || '').toLowerCase();
-      if (!vpMeta || !window.AP_FIT || (tag !== 'input' && tag !== 'textarea' && tag !== 'select')) return;
-      vpMeta.setAttribute('content', vpMeta.getAttribute('content').replace('user-scalable=no', 'user-scalable=yes'));
-      setTimeout(window.AP_FIT, 50); // index.html の「画面に合わせる」設定に戻す
+      if (tag !== 'input' && tag !== 'textarea' && tag !== 'select') return;
+      setTimeout(function () {
+        const a = document.activeElement;
+        if (a && /^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName)) return; // 次の入力欄へ移っただけ
+        window.scrollTo(0, 0);
+        if (window.AP_FIT) window.AP_FIT();
+      }, 100);
     });
     setupDebug();
 

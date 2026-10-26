@@ -880,7 +880,7 @@ html, body, button, label, select, input, textarea, .app-header, .toolbar, .draw
   .save-status.error { background: var(--danger); width: auto; height: auto; font-size: 11px; padding: 2px 6px; border-radius: 8px; }
 }
 /* 描画パネルは画面いっぱい（iOS の表示域に合わせる） */
-.draw-panel { width: 100vw; height: 100vh; height: 100dvh; }
+.draw-panel { width: 100vw; height: 100vh; height: 100dvh; } /* 開いたときに JS で実際の高さに合わせ直す */
 @media (max-width: 960px) {
   .draw-bar { gap: 4px; padding: 6px 8px; }
   .draw-bar button { min-height: 32px; padding: 3px 8px; }
