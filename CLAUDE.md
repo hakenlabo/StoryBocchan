@@ -31,6 +31,14 @@ XMindの良さは「ポストイットのようにつけたり剥がしたりで
   - 入力は Pointer Events で統一（ペン・タッチ・マウス）。`dblclick` はiPadで当てにならないので自前で判定する。
   - モダン構文（const/let、アロー関数、async/await）は使ってよい。import/export は使わない。
 
+## 公開（GitHub Pages）
+
+- リポジトリ：https://github.com/t1912-hub/StoryBocchan （public）
+- 公開URL：https://t1912-hub.github.io/StoryBocchan/ （main ブランチのルートをそのまま配信。`.nojekyll` で Jekyll の加工を止めている）
+- 更新は main に push するだけで、1〜2分後に公開版に反映される。
+- 作品データは各ブラウザの IndexedDB（オリジン単位）にあり、リポジトリには入らない。
+  file:// で使った作品と Web 版の作品は別のオリジンなので共有されない（zip で移す）。
+
 ## 操作感の調整
 
 - ドラッグのしきい値、ダブルタップ判定時間、カード寸法、ズーム範囲、自動配置の間隔などの定数は
