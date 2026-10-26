@@ -330,6 +330,19 @@
       const i = cutIndexAt(frame);
       if (i >= 0) { pause(); AP.Camera.open(cuts[i].card.id); }
     });
+    // 絵をダブルタップ（ダブルクリック）で、そのカットを描画パネルで開く
+    let lastTap = null;
+    canvas.addEventListener('pointerup', function (e) {
+      const now = performance.now();
+      if (lastTap && now - lastTap.t < C.DOUBLE_TAP_MS &&
+          Math.hypot(e.clientX - lastTap.x, e.clientY - lastTap.y) < C.DOUBLE_TAP_SLOP_PX) {
+        lastTap = null;
+        const i = cutIndexAt(frame);
+        if (i >= 0) { pause(); AP.Draw.open(cuts[i].card.id); }
+      } else {
+        lastTap = { t: now, x: e.clientX, y: e.clientY };
+      }
+    });
     document.getElementById('vc-draw').addEventListener('click', function () {
       const i = cutIndexAt(frame);
       if (i >= 0) { pause(); AP.Draw.open(cuts[i].card.id); }
