@@ -102,10 +102,10 @@
       const col = ci === null ? null : C.CARD_COLORS[ci];
       const b = document.createElement('button');
       b.type = 'button';
-      b.innerHTML = '<span class="swatch"></span><span class="color-label"></span><kbd>' + (ci === null ? 0 : ci + 1) + '</kbd>';
-      b.querySelector('.swatch').style.background = col ? col.bg : '#fff';
-      b.querySelector('.swatch').style.borderColor = col ? col.border : '#c9ced6';
-      b.querySelector('.color-label').textContent = col ? col.hint + '　' + col.name : 'なし（親の色・白）';
+      b.className = 'swatch' + (col ? '' : ' none');
+      b.title = (col ? col.name : '色なし') + '（' + (ci === null ? 0 : ci + 1) + '）';
+      b.style.background = col ? col.bg : '#fff';
+      b.style.borderColor = col ? col.border : '#c9ced6';
       b.addEventListener('click', function () { colorMenu.hidden = true; colorSelection(ci); });
       colorMenu.appendChild(b);
     });
@@ -138,8 +138,6 @@
     Store.checkpoint();
     Store.setColor(ids, color);
     Store.checkpoint();
-    const col = color === null ? null : C.CARD_COLORS[color];
-    U.toast((ids.length > 1 ? ids.length + '枚のカードを' : '') + (col ? '「' + col.hint + '・' + col.name + '」にしました（色のない子カードも同じ色になります）' : '色を外しました'));
     return true;
   }
 
