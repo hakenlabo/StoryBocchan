@@ -126,6 +126,11 @@
       el.classList.toggle('multi', mi >= 0 && multi.length > 0);
       if (mi >= 0) el.dataset.multi = String(mi + 1); else delete el.dataset.multi;
       el.classList.toggle('drop-target', c.id === dropTargetId);
+      // 色（自分の色か、先祖の色）
+      const col = Store.colorOf(c);
+      el.style.setProperty('--card-bg', col ? col.bg : '');
+      el.style.setProperty('--card-border', col ? col.border : '');
+      el.classList.toggle('colored', !!col);
       el.classList.toggle('dragging', !!(drag && drag.started && drag.movingSet.has(c.id)));
       // タイムラインに採用済みなら「#番号 尺」を出す
       const thumb = el.querySelector('.card-thumb');
@@ -189,9 +194,10 @@
         x0 = Math.min(x0, pt.x); y0 = Math.min(y0, pt.y);
         x1 = Math.max(x1, pt.x); y1 = Math.max(y1, pt.y);
       });
+      const col = Store.colorOf(c);
       html += '<g class="link" data-child="' + c.id + '">' +
         '<path class="link-hit" stroke-width="' + C.LINE_HIT_WIDTH + '" d="' + lp.d + '"/>' +
-        '<path class="link-vis" d="' + lp.d + '"/>' +
+        '<path class="link-vis" d="' + lp.d + '"' + (col ? ' style="stroke:' + col.line + '"' : '') + '/>' +
         '<title>クリックで切り離す</title></g>';
     });
     if (!html) { linesSvg.style.display = 'none'; linesSvg.innerHTML = ''; return; }

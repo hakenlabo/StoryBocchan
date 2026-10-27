@@ -6,7 +6,7 @@ window.AP = window.AP || {};
 
 AP.CONFIG = {
   APP_NAME: 'ストーリー坊ちゃん',     // アプリの名前（画面・保存ファイルの説明に出る）
-  APP_VERSION: '2026102610',          // 版番号（index.html の ?v=・sw.js の VERSION と同じ。tools/bump-version.sh で変える）
+  APP_VERSION: '2026102701',          // 版番号（index.html の ?v=・sw.js の VERSION と同じ。tools/bump-version.sh で変える）
 
   // ---- カードの見た目 ----
   CARD_W: 160,                 // カード幅（ワールド座標px）。高さはサムネ（画面比）＋テキストで決まる
@@ -35,6 +35,15 @@ AP.CONFIG = {
   ARRANGE_ROOT_GAP: 20,        // ツリー整列：いちばん上の階層（シーン）どうしの縦の間隔
   ARRANGE_UNDO_MS: 8000,       // 整列のあと「元に戻す」を押せる時間
 
+  // ---- カードの色（パステル4色。起承転結の色分けにも） ----
+  // card.color は番号（0〜3）か null。色のないカードは、いちばん近い先祖の色になる（枝ごと色分けできる）
+  CARD_COLORS: [
+    { name: 'ピンク', hint: '起', bg: '#fde4e8', border: '#f2a7b5', line: '#e98a9d' },
+    { name: 'きいろ', hint: '承', bg: '#fff4c7', border: '#ecc95c', line: '#dcb43a' },
+    { name: 'みどり', hint: '転', bg: '#dcf3e1', border: '#8fcf9f', line: '#6dbb81' },
+    { name: 'みずいろ', hint: '結', bg: '#dceafd', border: '#93bdf3', line: '#6fa3e8' },
+  ],
+
   // ---- 親子線 ----
   LINE_STYLE: 'curve',         // 'curve' | 'straight'
   LINE_HIT_WIDTH: 16,          // 線をクリックしやすくする当たり判定の太さ
@@ -56,6 +65,7 @@ AP.CONFIG = {
   TL_MIN_CARD_PX: 6,           // 尺がとても短いカードでも最低この幅は描く
   TL_PADDING_PX: 16,           // 帯の左右の余白
   TL_RESIZE_STEP_FRAMES: 1,    // 右端をドラッグして尺を変えるときの刻み（コマ）
+  VC_EDGE_GRAB_PX: 10,         // Vコンテのバー：カットの境目からこの距離をつかむと尺を伸び縮み（指はこの2倍）
   TL_AUTOSCROLL_EDGE_PX: 48,   // ドラッグ中、帯の端からこの距離に入ると自動スクロール
   TL_AUTOSCROLL_SPEED: 14,
   TL_DROP_ON_MAP_UNADOPTS: true, // タイムラインのカードをマップへドラッグで戻すと「外す」

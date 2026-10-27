@@ -54,6 +54,12 @@
       '<textarea class="ol-text" rows="1" placeholder="（空の行）"></textarea>' +
       '<span class="ol-meta"></span>';
     el.querySelector('.ol-text').value = c.text;
+    const col = Store.colorOf(c);
+    if (col) {
+      el.classList.add('colored');
+      el.style.setProperty('--row-bg', col.bg);
+      el.style.setProperty('--row-dot', col.line);
+    }
     el.querySelector('.ol-meta').textContent = meta.join('  ');
     return el;
   }

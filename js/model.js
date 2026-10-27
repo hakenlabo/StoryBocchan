@@ -28,6 +28,7 @@
       linkOf: null,      // 連動カット：絵と文字はこのidのカードのものを使う（尺・順番・カメラは自分で持つ）
       camera: null,      // カメラワーク（js/camera.js）。なしは null
       paper: { w: 1, h: 1 }, // 用紙の大きさ（画面の何倍か）。PAN・FOLLOW用の長い絵。絵と一緒なので連動カットは元のものを使う
+      color: null,       // カードの色（config.CARD_COLORS の番号）。null＝先祖の色（なければ白）
     }, props || {});
   }
 
@@ -624,6 +625,7 @@
       strokes: JSON.parse(JSON.stringify(src.strokes)),
       duration: src.duration,
       note: src.note,
+      color: src.color,
       camera: src.camera ? JSON.parse(JSON.stringify(src.camera)) : null,
       paper: { w: src.paper.w, h: src.paper.h },
       parentId: src.parentId,
@@ -635,6 +637,29 @@
     normalizeTree(copy.parentId);
     emit('create');
     return copy;
+  };
+
+  // ---- カードの色 ----
+  // 色を付ける（ids はまとめて。color は番号か null）
+  S.setColor = function (ids, color) {
+    ids.forEach(function (id) {
+      const c = byId.get(id);
+      if (c) c.color = color === null || color === undefined ? null : color;
+    });
+    emit('color');
+  };
+
+  // 見た目の色：自分の色、なければいちばん近い先祖の色。どちらもなければ null（連動カットは元のカード）
+  S.colorOf = function (card) {
+    if (typeof card === 'string') card = byId.get(card);
+    let cur = S.source(card);
+    const guard = new Set();
+    while (cur && !guard.has(cur.id)) {
+      if (cur.color !== null && cur.color !== undefined && C.CARD_COLORS[cur.color]) return C.CARD_COLORS[cur.color];
+      guard.add(cur.id);
+      cur = cur.parentId ? byId.get(cur.parentId) : null;
+    }
+    return null;
   };
 
   S.setDuration = function (id, frames) {

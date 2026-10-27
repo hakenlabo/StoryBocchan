@@ -95,8 +95,24 @@
       });
     });
     snapBox.addEventListener('change', function () { MapView.setSnap(snapBox.checked); });
+    // 色メニュー
+    const colorMenu = document.getElementById('color-menu');
+    const btnColor = document.getElementById('btn-color');
+    [null].concat(C.CARD_COLORS.map(function (x, i) { return i; })).forEach(function (ci) {
+      const col = ci === null ? null : C.CARD_COLORS[ci];
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.innerHTML = '<span class="swatch"></span><span class="color-label"></span><kbd>' + (ci === null ? 0 : ci + 1) + '</kbd>';
+      b.querySelector('.swatch').style.background = col ? col.bg : '#fff';
+      b.querySelector('.swatch').style.borderColor = col ? col.border : '#c9ced6';
+      b.querySelector('.color-label').textContent = col ? col.hint + '　' + col.name : 'なし（親の色・白）';
+      b.addEventListener('click', function () { colorMenu.hidden = true; colorSelection(ci); });
+      colorMenu.appendChild(b);
+    });
+    btnColor.addEventListener('click', function () { colorMenu.hidden = !colorMenu.hidden; });
     document.addEventListener('pointerdown', function (e) {
       if (!menu.hidden && !e.target.closest('.arrange-wrap')) menu.hidden = true;
+      if (!colorMenu.hidden && !e.target.closest('.color-wrap')) colorMenu.hidden = true;
     });
     document.getElementById('btn-zoom-in').addEventListener('click', function () { MapView.zoomBy(1.25); });
     document.getElementById('btn-zoom-out').addEventListener('click', function () { MapView.zoomBy(0.8); });
@@ -108,10 +124,23 @@
       btnCopy.disabled = !has;
       btnCut.disabled = !has;
       btnPeel.disabled = !has;
+      btnColor.disabled = !has && !MapView.multiSelected().length;
     };
     document.addEventListener('ap:select', update);
     document.addEventListener('ap:select', updateMultiButton);
     update();
+  }
+
+  // 選択中のカード（複数選択ならその全部）に色を付ける。color は番号か null
+  function colorSelection(color) {
+    const ids = MapView.multiSelected().length ? MapView.multiSelected().slice() : (MapView.selected() ? [MapView.selected()] : []);
+    if (!ids.length) { U.toast('色を付けるカードを選んでください'); return false; }
+    Store.checkpoint();
+    Store.setColor(ids, color);
+    Store.checkpoint();
+    const col = color === null ? null : C.CARD_COLORS[color];
+    U.toast((ids.length > 1 ? ids.length + '枚のカードを' : '') + (col ? '「' + col.hint + '・' + col.name + '」にしました（色のない子カードも同じ色になります）' : '色を外しました'));
+    return true;
   }
 
   function setupTabs() {
@@ -253,6 +282,9 @@
       } else if (!mod && !e.altKey && document.body.dataset.view === 'map' && e.key.toLowerCase() === 'g') {
         // G：グリッドに吸着のオン／オフ
         e.preventDefault(); MapView.setSnap(!MapView.snapOn());
+      } else if (!mod && !e.altKey && /^[0-4]$/.test(e.key)) {
+        // 1〜4：色、0：色なし
+        e.preventDefault(); colorSelection(e.key === '0' ? null : Number(e.key) - 1);
       }
     });
   }

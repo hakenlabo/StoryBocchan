@@ -311,11 +311,12 @@
     const X = function (x) { return ox + x * s; }, Y = function (y) { return oy + y * s; };
 
     // 親子線（マップと同じ形の曲線）
-    ctx.strokeStyle = '#9aa1ab';
     ctx.lineWidth = Math.max(1, 2 * s);
     cards.forEach(function (c) {
       const p = c.parentId && Store.get(c.parentId);
       if (!p || p.status !== 'active') return;
+      const lc = Store.colorOf(c);
+      ctx.strokeStyle = lc ? lc.line : '#9aa1ab';
       const ph = info.get(p.id).h, ch = info.get(c.id).h;
       const pc = { x: p.mapPos.x + CW / 2, y: p.mapPos.y + ph / 2 }, cc = { x: c.mapPos.x + CW / 2, y: c.mapPos.y + ch / 2 };
       const right = cc.x >= pc.x;
@@ -331,9 +332,10 @@
     cards.forEach(function (c) {
       const inf = info.get(c.id);
       const x = X(c.mapPos.x), y = Y(c.mapPos.y), w = CW * s, h = inf.h * s;
+      const col = Store.colorOf(c);
       ctx.save();
       roundRect(ctx, x, y, w, h, 8 * s);
-      ctx.fillStyle = '#fff';
+      ctx.fillStyle = col ? col.bg : '#fff';
       ctx.fill();
       ctx.clip();
       ctx.fillStyle = '#f3f4f6';
@@ -349,7 +351,7 @@
       ctx.restore();
       ctx.save();
       roundRect(ctx, x, y, w, h, 8 * s);
-      ctx.strokeStyle = '#c9ced6';
+      ctx.strokeStyle = col ? col.border : '#c9ced6';
       ctx.lineWidth = Math.max(1, 1.5 * s);
       ctx.stroke();
       ctx.restore();

@@ -7,7 +7,7 @@
   const U = AP.util;
   const Store = AP.Store;
 
-  let section, stage, canvas, ctx, bar, segsEl, playhead, timeEl, cutEl, playBtn, loopBtn, emptyEl;
+  let section, stage, canvas, ctx, bar, segsEl, playhead, timeEl, cutEl, playBtn, loopBtn, emptyEl, durBtn;
   let cuts = [];            // [{ card, start, end, sceneId, sceneNo, cutNo }]（start以上end未満のコマ）
   let total = 0;
   let frame = 0;
@@ -174,6 +174,8 @@
       s.style.flexGrow = cut.card.duration;
       s.title = 'S' + cut.sceneNo + '（' + Store.sceneName(cut.sceneId) + '） C' + cut.cutNo + ' ' + (Store.source(cut.card).text || '（無題）');
       s.textContent = first ? 'S' + cut.sceneNo + ' ' + cut.cutNo : cut.cutNo;
+      const col = Store.colorOf(cut.card);
+      if (col) s.style.boxShadow = 'inset 0 -5px 0 ' + col.line;
       segsEl.appendChild(s);
     });
   }
@@ -189,6 +191,8 @@
     const i = cutIndexAt(frame);
     cutEl.textContent = i >= 0 ? 'S' + cuts[i].sceneNo + ' C' + cuts[i].cutNo + '  ' + (Store.source(cuts[i].card).text || '（無題）') : '';
     segsEl.querySelectorAll('.vc-seg').forEach(function (el, k) { el.classList.toggle('current', k === i); });
+    if (!durEditing) durBtn.textContent = i >= 0 ? '尺 ' + U.framesToLabel(cuts[i].card.duration, fps) : '尺';
+    ['vc-dur', 'vc-dur-minus', 'vc-dur-plus'].forEach(function (id) { document.getElementById(id).disabled = i < 0; });
     playBtn.textContent = playing ? '❚❚ 一時停止' : '▶ 再生';
   }
 
@@ -241,6 +245,86 @@
     if (delta < 0 && frame > cuts[i].start) return seek(cuts[i].start);
     const j = U.clamp(i + delta, 0, cuts.length - 1);
     seek(cuts[j].start);
+  }
+
+  // ---- 尺を変える（いま表示しているカット） ----
+  let durEditing = false;
+  let edgeDrag = null;   // バーの境目をドラッグ中 { pointerId, index, startX, orig, perPx }
+
+  // index 番目のカットの尺を frames に。表示位置は同じカットの中に残す
+  function setCutDuration(index, frames, keepEnd) {
+    const cut = cuts[index];
+    if (!cut) return;
+    const local = frame - cut.start;
+    const f = Math.max(C.MIN_DURATION_FRAMES, Math.round(frames));
+    if (f === cut.card.duration) return;
+    Store.setDuration(cut.card.id, f);   // ここで作り直される
+    rebuild();
+    const c2 = cuts[index];
+    if (c2) seek(keepEnd ? c2.end - 1 : c2.start + U.clamp(local, 0, c2.card.duration - 1));
+  }
+
+  function nudgeDuration(sign, bigStep) {
+    const i = cutIndexAt(frame);
+    if (i < 0) return;
+    pause();
+    setCutDuration(i, cuts[i].card.duration + sign * (bigStep ? Store.settings().fps : 1));
+  }
+
+  function startDurEdit() {
+    const i = cutIndexAt(frame);
+    if (i < 0 || durEditing) return;
+    pause();
+    const fps = Store.settings().fps;
+    const card = cuts[i].card;
+    const input = document.createElement('input');
+    input.type = 'text';
+    input.className = 'vc-dur-input';
+    input.value = U.framesToLabel(card.duration, fps);
+    input.setAttribute('aria-label', '尺（秒+コマ）');
+    durEditing = true;
+    durBtn.hidden = true;
+    durBtn.after(input);
+    let done = false;
+    const finish = function (commit) {
+      if (done) return;
+      done = true;
+      durEditing = false;
+      const frames = U.labelToFrames(input.value, fps);
+      input.remove();
+      durBtn.hidden = false;
+      if (commit && frames === null) U.toast('「秒+コマ」で入力してください（例 2+12）');
+      if (commit && frames !== null) setCutDuration(i, frames);
+      draw();
+    };
+    input.addEventListener('keydown', function (e) {
+      e.stopPropagation();
+      if (e.isComposing || e.keyCode === 229) return;
+      if (e.key === 'Enter') { e.preventDefault(); finish(true); }
+      else if (e.key === 'Escape') { e.preventDefault(); finish(false); }
+      else if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
+        e.preventDefault();
+        const cur = U.labelToFrames(input.value, fps);
+        const d = (e.key === 'ArrowUp' ? 1 : -1) * (e.shiftKey ? fps : 1);
+        input.value = U.framesToLabel(Math.max(C.MIN_DURATION_FRAMES, (cur === null ? card.duration : cur) + d), fps);
+      }
+    });
+    input.addEventListener('blur', function () { finish(true); });
+    input.focus();
+    input.select();
+  }
+
+  // バーの上で、カットの終わりの境目の近くなら、そのカットの番号
+  function edgeAt(cx, pointerType) {
+    if (!total) return -1;
+    const r = bar.getBoundingClientRect();
+    const grab = C.VC_EDGE_GRAB_PX * (pointerType === 'touch' ? 2 : 1);
+    let best = -1, bestD = grab + 1;
+    cuts.forEach(function (cut, i) {
+      const d = Math.abs(cx - (r.left + (cut.end / total) * r.width));
+      if (d <= grab && d < bestD) { best = i; bestD = d; }
+    });
+    return best;
   }
 
   function frameAtClient(cx) {
@@ -306,6 +390,7 @@
     else if (e.key === 'ArrowRight') { e.preventDefault(); pause(); e.shiftKey ? seekCut(1) : seek(frame + 1); }
     else if (e.key === 'Home') { e.preventDefault(); seek(0); }
     else if (e.key === 'End') { e.preventDefault(); seek(total - 1); }
+    else if (e.code === 'BracketLeft' || e.code === 'BracketRight') { e.preventDefault(); nudgeDuration(e.code === 'BracketRight' ? 1 : -1, e.shiftKey); }
   }
 
   function init() {
@@ -321,6 +406,10 @@
     playBtn = document.getElementById('vc-play');
     loopBtn = document.getElementById('vc-loop');
     emptyEl = document.getElementById('vc-empty');
+    durBtn = document.getElementById('vc-dur');
+    durBtn.addEventListener('click', startDurEdit);
+    document.getElementById('vc-dur-minus').addEventListener('click', function (e) { nudgeDuration(-1, e.shiftKey); });
+    document.getElementById('vc-dur-plus').addEventListener('click', function (e) { nudgeDuration(1, e.shiftKey); });
 
     playBtn.addEventListener('click', function () { playing ? pause() : play(); });
     document.getElementById('vc-start').addEventListener('click', function () { seek(0); });
@@ -363,15 +452,40 @@
     // シークバー：タップした位置へ、ドラッグで送り
     bar.addEventListener('pointerdown', function (e) {
       if (!total) return;
+      // カットの境目をつかんだら、そのカットの尺を伸び縮み
+      const edge = edgeAt(e.clientX, e.pointerType);
+      if (edge >= 0) {
+        pause();
+        edgeDrag = { pointerId: e.pointerId, index: edge, startX: e.clientX, orig: cuts[edge].card.duration,
+          perPx: total / bar.getBoundingClientRect().width };
+        Store.checkpoint();
+        bar.setPointerCapture(e.pointerId);
+        bar.classList.add('resizing');
+        seek(cuts[edge].end - 1);
+        e.preventDefault();
+        return;
+      }
       scrubbing = { pointerId: e.pointerId, wasPlaying: playing };
       if (playing) pause();
       bar.setPointerCapture(e.pointerId);
       seek(frameAtClient(e.clientX));
     });
     bar.addEventListener('pointermove', function (e) {
+      if (edgeDrag && e.pointerId === edgeDrag.pointerId) {
+        // 幅と尺の割合はつかんだときのまま（総尺が変わってもずれないように）
+        setCutDuration(edgeDrag.index, edgeDrag.orig + Math.round((e.clientX - edgeDrag.startX) * edgeDrag.perPx), true);
+        return;
+      }
+      if (!scrubbing) bar.classList.toggle('edge', edgeAt(e.clientX, e.pointerType) >= 0);
       if (scrubbing && e.pointerId === scrubbing.pointerId) seek(frameAtClient(e.clientX));
     });
     const endScrub = function (e) {
+      if (edgeDrag && e.pointerId === edgeDrag.pointerId) {
+        edgeDrag = null;
+        bar.classList.remove('resizing');
+        Store.checkpoint();
+        return;
+      }
       if (!scrubbing || e.pointerId !== scrubbing.pointerId) return;
       const resume = scrubbing.wasPlaying;
       scrubbing = null;

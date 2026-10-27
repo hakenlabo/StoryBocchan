@@ -44,7 +44,7 @@
     var m = document.createElement('link'); m.rel = 'manifest'; m.href = 'manifest.webmanifest'; document.head.appendChild(m);
   }
   </script>
-  <link rel="stylesheet" href="css/app.css?v=2026102610">
+  <link rel="stylesheet" href="css/app.css?v=2026102701">
 </head>
 <body data-view="map">
   <header class="app-header">
@@ -79,6 +79,10 @@
     <button id="btn-copy" type="button" title="選択中のカードを子カードごとコピー（⌘/Ctrl+C）">コピー</button>
     <button id="btn-cut" type="button" title="選択中のカードを子カードごと切り取り（⌘/Ctrl+X）。保留トレイに入るので戻せます">切り取り</button>
     <button id="btn-paste" type="button" title="選択中のカードの子として貼り付け（⌘/Ctrl+V）。外の箇条書きは1行1カードに">貼り付け</button>
+    <span class="color-wrap">
+      <button id="btn-color" type="button" title="選択中のカードの色（1〜4、0でなし）。色のない子カードは親の色になります">🎨 色 ▾</button>
+      <div id="color-menu" class="arrange-menu color-menu" hidden></div>
+    </span>
     <span class="sep"></span>
     <button id="btn-zoom-out" type="button" title="縮小">－</button>
     <span id="zoom-label" class="zoom-label">100%</span>
@@ -179,6 +183,11 @@
         <button id="vc-loop" type="button" title="最後まで行ったら頭から">⟲ ループ</button>
         <span id="vc-time" class="vc-time"></span>
         <span id="vc-cut" class="vc-cut"></span>
+        <span class="vc-dur-box" title="いま表示しているカットの尺（[ ] キーで1コマ、Shiftで1秒。下のバーの境目をドラッグしても変えられます）">
+          <button id="vc-dur-minus" type="button" title="1コマ短く（Shift：1秒）">－</button>
+          <button id="vc-dur" type="button" class="vc-dur" title="タップして尺を入力（秒+コマ）">尺</button>
+          <button id="vc-dur-plus" type="button" title="1コマ長く（Shift：1秒）">＋</button>
+        </span>
         <label class="vc-opt"><input id="vc-show-cutno" type="checkbox"> カット番号</label>
         <label class="vc-opt"><input id="vc-show-text" type="checkbox"> テキスト</label>
         <label class="vc-opt"><input id="vc-show-note" type="checkbox"> セリフ</label>
@@ -229,23 +238,23 @@
 
   <!-- 読み込み順に意味があります（ES Modulesは使わない方針）。
        ?v= は版番号：公開版を更新したら全部を新しい番号にする（古いファイルがブラウザに残らないように） -->
-  <script src="js/config.js?v=2026102610"></script>
-  <script src="js/util.js?v=2026102610"></script>
-  <script src="js/model.js?v=2026102610"></script>
-  <script src="js/storage.js?v=2026102610"></script>
-  <script src="js/map.js?v=2026102610"></script>
-  <script src="js/tray.js?v=2026102610"></script>
-  <script src="js/timeline.js?v=2026102610"></script>
-  <script src="js/draw.js?v=2026102610"></script>
-  <script src="js/camera.js?v=2026102610"></script>
-  <script src="js/vconte.js?v=2026102610"></script>
-  <script src="js/clipboard.js?v=2026102610"></script>
-  <script src="js/outline.js?v=2026102610"></script>
-  <script src="js/zip.js?v=2026102610"></script>
-  <script src="js/project.js?v=2026102610"></script>
-  <script src="js/pdf.js?v=2026102610"></script>
-  <script src="js/mp4.js?v=2026102610"></script>
-  <script src="js/movie.js?v=2026102610"></script>
-  <script src="js/app.js?v=2026102610"></script>
+  <script src="js/config.js?v=2026102701"></script>
+  <script src="js/util.js?v=2026102701"></script>
+  <script src="js/model.js?v=2026102701"></script>
+  <script src="js/storage.js?v=2026102701"></script>
+  <script src="js/map.js?v=2026102701"></script>
+  <script src="js/tray.js?v=2026102701"></script>
+  <script src="js/timeline.js?v=2026102701"></script>
+  <script src="js/draw.js?v=2026102701"></script>
+  <script src="js/camera.js?v=2026102701"></script>
+  <script src="js/vconte.js?v=2026102701"></script>
+  <script src="js/clipboard.js?v=2026102701"></script>
+  <script src="js/outline.js?v=2026102701"></script>
+  <script src="js/zip.js?v=2026102701"></script>
+  <script src="js/project.js?v=2026102701"></script>
+  <script src="js/pdf.js?v=2026102701"></script>
+  <script src="js/mp4.js?v=2026102701"></script>
+  <script src="js/movie.js?v=2026102701"></script>
+  <script src="js/app.js?v=2026102701"></script>
 </body>
 </html>
