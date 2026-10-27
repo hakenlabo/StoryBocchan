@@ -640,7 +640,8 @@
   };
 
   // ---- カードの色 ----
-  // 色を付ける（ids はまとめて。color は番号か null）
+  // 色を付ける（ids はまとめて）。color は番号、S.WHITE（「色なし」＝白。親の色も受け継がない）、null（親の色を受け継ぐ）
+  S.WHITE = -1;
   S.setColor = function (ids, color) {
     ids.forEach(function (id) {
       const c = byId.get(id);
@@ -650,11 +651,13 @@
   };
 
   // 見た目の色：自分の色、なければいちばん近い先祖の色。どちらもなければ null（連動カットは元のカード）
+  // 途中に「色なし（WHITE）」のカードがあれば、そこから下は白
   S.colorOf = function (card) {
     if (typeof card === 'string') card = byId.get(card);
     let cur = S.source(card);
     const guard = new Set();
     while (cur && !guard.has(cur.id)) {
+      if (cur.color === S.WHITE) return null;
       if (cur.color !== null && cur.color !== undefined && C.CARD_COLORS[cur.color]) return C.CARD_COLORS[cur.color];
       guard.add(cur.id);
       cur = cur.parentId ? byId.get(cur.parentId) : null;

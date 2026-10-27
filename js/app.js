@@ -136,7 +136,7 @@
     const ids = MapView.multiSelected().length ? MapView.multiSelected().slice() : (MapView.selected() ? [MapView.selected()] : []);
     if (!ids.length) { U.toast('色を付けるカードを選んでください'); return false; }
     Store.checkpoint();
-    Store.setColor(ids, color);
+    Store.setColor(ids, color === null ? Store.WHITE : color);   // 「色なし」は親の色も受け継がず白にする
     Store.checkpoint();
     return true;
   }
