@@ -7,7 +7,7 @@
 
 ## Webですぐ使う
 
-**https://t1912-hub.github.io/StoryBocchan/** をブラウザ（Chrome または Safari）で開くだけで使えます。iPadもこのURLから使ってください。
+**https://hakenlabo.github.io/StoryBocchan/** をブラウザ（Chrome または Safari）で開くだけで使えます。iPadもこのURLから使ってください。
 
 - 作品は、開いたブラウザの中に自動保存されます（端末・ブラウザごとに別々です）。
 - 別の端末やブラウザに移すとき、バックアップを取るときは「💾 保存」でzipにして、移った先で「📁 プロジェクト」→「ファイルから開く」。
@@ -40,7 +40,7 @@ Web版を更新すればアプリも次に開いたときに新しくなりま�
 1. ターミナル（Windowsは「Git Bash」など）を開いて、置きたい場所で次を実行します。
 
    ```bash
-   git clone https://github.com/t1912-hub/StoryBocchan.git
+   git clone https://github.com/hakenlabo/StoryBocchan.git
    ```
 
 2. できたフォルダの中の **`index.html` をダブルクリック** してブラウザで開きます。

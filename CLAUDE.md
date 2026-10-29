@@ -40,10 +40,10 @@ XMindの良さは「ポストイットのようにつけたり剥がしたりで
 
 ## 公開（GitHub Pages）
 
-- リポジトリ：https://github.com/t1912-hub/StoryBocchan （public）
-- 公開URL：https://t1912-hub.github.io/StoryBocchan/ （main ブランチのルートをそのまま配信。`.nojekyll` で Jekyll の加工を止めている）
+- リポジトリ：https://github.com/hakenlabo/StoryBocchan （public）
+- 公開URL：https://hakenlabo.github.io/StoryBocchan/ （main ブランチのルートをそのまま配信。`.nojekyll` で Jekyll の加工を止めている）
 - 更新は main に push するだけで、数十秒〜2分後に公開版に反映される（ブラウザのキャッシュが残っていたら再読み込み）。
-- 手順：変更 → file:// で動作確認 → **版番号を上げる** → コミット → `git push`（SSH、remote は git@github.com:t1912-hub/StoryBocchan.git）。
+- 手順：変更 → file:// で動作確認 → **版番号を上げる** → コミット → `git push`（SSH、remote は git@github.com:hakenlabo/StoryBocchan.git）。
   - 版番号：index.html の全 `?v=` と `config.APP_VERSION` を同じ新しい番号に（例 2026102602）。
     GitHub Pages は最大10分ほどブラウザにファイルを残させるので、番号を変えないと iPad などで古いCSS/JSのままになる。
   - 表示の確認用に、URL の末尾に `?debug=1` を付けると画面の大きさ・拡大率・版番号が出る。

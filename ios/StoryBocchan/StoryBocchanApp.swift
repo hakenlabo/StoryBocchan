@@ -13,10 +13,10 @@ enum AppConfig {
     /// 起動時の引数 -startURL で別のURLを開ける（例：調べものに ?debug=1 を付ける）
     static let startURL: URL = {
         if let s = UserDefaults.standard.string(forKey: "startURL"), let u = URL(string: s) { return u }
-        return URL(string: "https://t1912-hub.github.io/StoryBocchan/")!
+        return URL(string: "https://hakenlabo.github.io/StoryBocchan/")!
     }()
     /// アプリの中だけで開くドメイン（Info.plist の WKAppBoundDomains と同じにする）
-    static let appHost = "t1912-hub.github.io"
+    static let appHost = "hakenlabo.github.io"
 }
 
 @main
