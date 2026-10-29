@@ -37,6 +37,7 @@
         duration: card.duration,
         note: card.note,
         color: card.color === undefined ? null : card.color,
+        image: card.image || null,
         camera: card.camera ? JSON.parse(JSON.stringify(card.camera)) : null,
         paper: { w: card.paper.w, h: card.paper.h },
         parentIndex: parentIndex,
@@ -89,6 +90,7 @@
       created.push(Store.createCard({
         text: it.text, strokes: it.strokes, duration: it.duration, note: it.note, camera: it.camera || null, paper: it.paper || { w: 1, h: 1 },
         color: it.color === undefined ? null : it.color,
+        image: it.image || null,
         parentId: parentId, mapPos: pos,
       }));
     });

@@ -29,6 +29,7 @@
       camera: null,      // カメラワーク（js/camera.js）。なしは null
       paper: { w: 1, h: 1 }, // 用紙の大きさ（画面の何倍か）。PAN・FOLLOW用の長い絵。絵と一緒なので連動カットは元のものを使う
       color: null,       // カードの色（config.CARD_COLORS の番号）。null＝先祖の色（なければ白）
+      image: null,       // 読み込んだ写真・絵 { src: JPEGのdata URL, w, h }。線の下に敷く。絵と一緒なので連動カットは元のものを使う
     }, props || {});
   }
 
@@ -626,6 +627,7 @@
       duration: src.duration,
       note: src.note,
       color: src.color,
+      image: src.image,
       camera: src.camera ? JSON.parse(JSON.stringify(src.camera)) : null,
       paper: { w: src.paper.w, h: src.paper.h },
       parentId: src.parentId,
@@ -637,6 +639,14 @@
     normalizeTree(copy.parentId);
     emit('create');
     return copy;
+  };
+
+  // 写真・絵の画像を敷く（null で外す）。中身は差し替えだけで書き換えない
+  S.setImage = function (id, image) {
+    const c = byId.get(id);
+    if (!c) return;
+    c.image = image || null;
+    emit('image');
   };
 
   // ---- カードの色 ----

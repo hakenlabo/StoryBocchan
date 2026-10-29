@@ -73,22 +73,22 @@
     const v = AP.Camera.view(cam, t, baseH, paper);
     const still = !cam || !cam.move || cam.move === 'none';
     const key = card.id + '|' + W + 'x' + H + '|' + v.z + ',' + v.cx + ',' + v.cy;
+    const s = (W / C.DRAW_BASE_W) * v.z;
+    const offsets = [[0, 0]];
+    if (v.tile) {
+      // FOLLOW：窓にかかる分だけ絵を並べる
+      offsets.length = 0;
+      const span = v.tile === 'x' ? C.DRAW_BASE_W * paper.w : baseH * paper.h;
+      const c0 = v.tile === 'x' ? v.cx : v.cy;
+      const half = span / v.z / 2;
+      for (let k = Math.floor((c0 - half) / span); k <= Math.floor((c0 + half) / span); k++) {
+        offsets.push(v.tile === 'x' ? [k * span, 0] : [0, k * span]);
+      }
+    }
     if (!still || layerKey !== key || layer._strokes !== card.strokes) {
       if (layer.width !== W || layer.height !== H) { layer.width = W; layer.height = H; }
       layerCtx.setTransform(1, 0, 0, 1, 0, 0);
       layerCtx.clearRect(0, 0, W, H);
-      const s = (W / C.DRAW_BASE_W) * v.z;
-      const offsets = [[0, 0]];
-      if (v.tile) {
-        // FOLLOW：窓にかかる分だけ絵を並べる
-        offsets.length = 0;
-        const span = v.tile === 'x' ? C.DRAW_BASE_W * paper.w : baseH * paper.h;
-        const c0 = v.tile === 'x' ? v.cx : v.cy;
-        const half = span / v.z / 2;
-        for (let k = Math.floor((c0 - half) / span); k <= Math.floor((c0 + half) / span); k++) {
-          offsets.push(v.tile === 'x' ? [k * span, 0] : [0, k * span]);
-        }
-      }
       offsets.forEach(function (o) {
         layerCtx.setTransform(1, 0, 0, 1, W / 2 - (v.cx - o[0]) * s, H / 2 - (v.cy - o[1]) * s);
         AP.Draw.drawStrokes(layerCtx, card.strokes, s);
@@ -96,6 +96,14 @@
       layerCtx.setTransform(1, 0, 0, 1, 0, 0);
       layerKey = still ? key : null;
       layer._strokes = card.strokes;
+    }
+    // 写真・絵の画像は線の下に（カメラの窓に合わせて毎コマ描く）
+    if (card.image) {
+      offsets.forEach(function (o) {
+        c2d.setTransform(1, 0, 0, 1, W / 2 - (v.cx - o[0]) * s, H / 2 - (v.cy - o[1]) * s);
+        AP.Draw.drawImage(c2d, card.image, paper, st.aspect, s);
+      });
+      c2d.setTransform(1, 0, 0, 1, 0, 0);
     }
     c2d.drawImage(layer, 0, 0);
 

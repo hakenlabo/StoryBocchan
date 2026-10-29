@@ -101,6 +101,7 @@
 
   async function buildZip() {
     await Storage.flush();
+    await AP.Draw.imagesReady();
     const p = Store.project();
     p.lastExportedAt = Date.now();
     const files = [{ name: 'project.json', data: JSON.stringify(p) }];

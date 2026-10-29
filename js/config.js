@@ -6,7 +6,7 @@ window.AP = window.AP || {};
 
 AP.CONFIG = {
   APP_NAME: 'ストーリー坊ちゃん',     // アプリの名前（画面・保存ファイルの説明に出る）
-  APP_VERSION: '2026102703',          // 版番号（index.html の ?v=・sw.js の VERSION と同じ。tools/bump-version.sh で変える）
+  APP_VERSION: '2026102901',          // 版番号（index.html の ?v=・sw.js の VERSION と同じ。tools/bump-version.sh で変える）
 
   // ---- カードの見た目 ----
   CARD_W: 160,                 // カード幅（ワールド座標px）。高さはサムネ（画面比）＋テキストで決まる
@@ -92,6 +92,9 @@ AP.CONFIG = {
   DRAW_MIN_POINT_DIST: 1.5,      // これより近い点は記録しない（データを軽くする）
   DRAW_UNDO_LIMIT: 100,
   DRAW_THUMB_W: 320,             // サムネイル画像の幅（px）
+  IMAGE_MAX_PX: 1600,            // 読み込んだ写真・絵は長い辺をこの大きさまで縮める（作品データを重くしすぎないため）
+  IMAGE_JPEG_QUALITY: 0.85,      // 読み込んだ画像を JPEG にするときの画質
+  IMAGE_IMPORT_GAP: 20,          // まとめて読み込んだ画像のカードを横に並べるときの間隔
   THUMB_MIN_LINE_PX: 2.5,        // サムネイルでの線の最小の太さ（320px幅の画像で。縮めても線が見えるように）
   // 用紙：画面の何倍の大きさに描くか（PAN・FOLLOW用の長い絵）。w＝横、h＝縦
   DRAW_PAPERS: [

@@ -73,12 +73,83 @@
     return cv;
   }
 
-  // サムネイル（透明PNGのdata URL）。画面比の枠に用紙全体を収める。strokes配列・画面比・用紙が同じなら作り直さない
-  const thumbCache = new WeakMap();
-  function thumbURL(strokes, aspect, paper) {
-    if (!strokes || !strokes.length) return '';
+  // ------------------------------------------------------------
+  // 写真・絵の画像（card.image = { src: data URL, w, h }）。線の下に敷く。消しゴムでは消えない
+  // ------------------------------------------------------------
+  const imgCache = new Map(); // src → { img, ok, p }
+  function loadImage(src) {
+    let e = imgCache.get(src);
+    if (!e) {
+      const img = new Image();
+      e = { img: img, ok: false };
+      e.p = new Promise(function (resolve) {
+        img.onload = function () { e.ok = true; resolve(); document.dispatchEvent(new CustomEvent('ap:imageloaded')); };
+        img.onerror = function () { resolve(); };
+      });
+      img.src = src;
+      imgCache.set(src, e);
+    }
+    return e;
+  }
+
+  // 読み込み済みなら <img>、まだなら null（読み込めたら ap:imageloaded が来るので描き直す）
+  function imageEl(image) {
+    if (!image || !image.src || !image.w || !image.h) return null;
+    const e = loadImage(image.src);
+    return e.ok ? e.img : null;
+  }
+
+  // 画像を描く。ctx は用紙の左上が原点、scale は 画面px／絵の単位。用紙の中に縦横比を保って真ん中に収める
+  function drawImage(ctx, image, paper, aspect, scale) {
+    const img = imageEl(image);
+    if (!img) return;
     paper = paper || { w: 1, h: 1 };
-    const tag = aspect + '|' + paper.w + 'x' + paper.h;
+    const pw = C.DRAW_BASE_W * paper.w;
+    const ph = (C.DRAW_BASE_W / U.aspectRatio(aspect)) * paper.h;
+    const k = Math.min(pw / image.w, ph / image.h);
+    const w = image.w * k, h = image.h * k;
+    ctx.drawImage(img, (pw - w) / 2 * scale, (ph - h) / 2 * scale, w * scale, h * scale);
+  }
+
+  // 書き出し（PDF・MP4・zip）の前に、すべての画像を読み込んでおく
+  function imagesReady() {
+    return Promise.all(Store.cards().filter(function (c) { return c.image && c.image.src; })
+      .map(function (c) { return loadImage(c.image.src).p; }));
+  }
+
+  // ファイル → { src, w, h }（長い辺を IMAGE_MAX_PX までに縮めて JPEG に。透明な所は白）
+  function readImageFile(file) {
+    return new Promise(function (resolve, reject) {
+      const url = URL.createObjectURL(file);
+      const img = new Image();
+      img.onload = function () {
+        const k = Math.min(1, C.IMAGE_MAX_PX / Math.max(img.naturalWidth, img.naturalHeight));
+        const w = Math.max(1, Math.round(img.naturalWidth * k));
+        const h = Math.max(1, Math.round(img.naturalHeight * k));
+        const cv = document.createElement('canvas');
+        cv.width = w;
+        cv.height = h;
+        const c2 = cv.getContext('2d');
+        c2.fillStyle = '#fff';
+        c2.fillRect(0, 0, w, h);
+        c2.drawImage(img, 0, 0, w, h);
+        URL.revokeObjectURL(url);
+        resolve({ src: cv.toDataURL('image/jpeg', C.IMAGE_JPEG_QUALITY), w: w, h: h });
+      };
+      img.onerror = function () { URL.revokeObjectURL(url); reject(new Error('画像を読み込めませんでした：' + file.name)); };
+      img.src = url;
+    });
+  }
+
+  // サムネイル（透明PNGのdata URL）。画面比の枠に用紙全体を収める。strokes配列・画面比・用紙・画像が同じなら作り直さない
+  const thumbCache = new WeakMap();
+  function thumbURL(strokes, aspect, paper, image) {
+    const hasImg = !!(image && image.src);
+    if ((!strokes || !strokes.length) && !hasImg) return '';
+    strokes = strokes || [];
+    if (hasImg && !imageEl(image)) return ''; // 画像の読み込み待ち（済んだら描き直される）
+    paper = paper || { w: 1, h: 1 };
+    const tag = aspect + '|' + paper.w + 'x' + paper.h + '|' + (hasImg ? image.src.length + image.src.slice(-24) : '');
     const hit = thumbCache.get(strokes);
     if (hit && hit.tag === tag) return hit.url;
     const w = C.DRAW_THUMB_W;
@@ -90,9 +161,17 @@
     cv.width = w;
     cv.height = h;
     const c2 = cv.getContext('2d');
-    c2.translate((w - pw * s) / 2, (h - ph * s) / 2);
+    const ox = (w - pw * s) / 2, oy = (h - ph * s) / 2;
+    if (hasImg) { c2.translate(ox, oy); drawImage(c2, image, paper, aspect, s); c2.setTransform(1, 0, 0, 1, 0, 0); }
+    // 線は透明な層に描いてから重ねる（消しゴムが画像に穴をあけないように）
+    const lay = document.createElement('canvas');
+    lay.width = w;
+    lay.height = h;
+    const lc = lay.getContext('2d');
+    lc.translate(ox, oy);
     minLinePx = C.THUMB_MIN_LINE_PX;
-    try { drawStrokes(c2, strokes, s); } finally { minLinePx = 0; }
+    try { drawStrokes(lc, strokes, s); } finally { minLinePx = 0; }
+    c2.drawImage(lay, 0, 0);
     const url = cv.toDataURL('image/png');
     thumbCache.set(strokes, { tag: tag, url: url });
     return url;
@@ -236,8 +315,16 @@
     canvas.width = Math.round(w * dpr);
     canvas.height = Math.round(h * dpr);
     scale = w / (C.DRAW_BASE_W * paper.w);
+    updateImage();
     redraw();
     renderCamFrames();
+  }
+
+  // 敷いた画像はキャンバスの背景に出す（線はキャンバスに描くので、消しゴムで消えるのは線だけ）
+  function updateImage() {
+    const im = drawId && Store.get(drawId) && Store.get(drawId).image;
+    canvas.style.backgroundImage = im && im.src ? 'url("' + im.src + '")' : '';
+    document.getElementById('draw-image-clear').hidden = !(im && im.src);
   }
 
   // カメラワークの「始め」「終わり」の枠を重ねて見せる（どこが映るか分かるように）
@@ -483,7 +570,10 @@
       });
     });
     document.getElementById('draw-camera').addEventListener('click', function () { if (cardId) AP.Camera.open(cardId); });
-    Store.subscribe(function (reason) { if (cardId && (reason === 'camera' || reason === 'settings')) renderCamFrames(); });
+    Store.subscribe(function (reason) {
+      if (cardId && (reason === 'camera' || reason === 'settings')) renderCamFrames();
+      if (cardId && (reason === 'image' || reason === 'history')) updateImage();
+    });
     const paperSel = document.getElementById('draw-paper');
     C.DRAW_PAPERS.forEach(function (p, i) {
       const o = document.createElement('option');
@@ -520,6 +610,8 @@
   AP.Draw = {
     init: init,
     currentStrokes: function () { return cardId ? strokes : []; },
+    // 描画パネルで絵を書き込んでいるカード（連動カットなら元のカード）。閉じていれば null
+    editingCardId: function () { return cardId ? drawId : null; },
     debugInfo: function () {
       if (!cardId) return '';
       const r = canvas.getBoundingClientRect(), pr = panel.getBoundingClientRect();
@@ -541,5 +633,8 @@
     drawStrokes: drawStrokes,
     strokesLayer: strokesLayer,
     thumbURL: thumbURL,
+    drawImage: drawImage,
+    imagesReady: imagesReady,
+    readImageFile: readImageFile,
   };
 })();

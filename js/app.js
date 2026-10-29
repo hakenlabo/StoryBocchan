@@ -336,6 +336,7 @@
     AP.Project.init();
     AP.Pdf.init();
     AP.Movie.init();
+    AP.Images.init();
     setupHeader();
     setupTabs();
     setupUndo();

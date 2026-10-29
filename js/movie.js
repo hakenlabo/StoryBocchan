@@ -195,6 +195,7 @@
     let saved = false;
     try {
       setStatus('準備中…');
+      await AP.Draw.imagesReady();
       const cfgs = await findConfigs(sz.w, sz.h, fps);
       let blob, ext = 'mp4', done = false;
       for (let i = 0; i < cfgs.length && !done && !cancelled; i++) {
@@ -321,6 +322,7 @@
       const fps = Store.settings().fps;
       const sz = frameSize(size || 720);
       cancelled = false;
+      await AP.Draw.imagesReady();
       const cfgs = await findConfigs(sz.w, sz.h, fps);
       if (!cfgs.length) return null;
       return encodeWebCodecs(cfgs[0], sz.w, sz.h, fps, function () {});

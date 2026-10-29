@@ -44,7 +44,7 @@
     var m = document.createElement('link'); m.rel = 'manifest'; m.href = 'manifest.webmanifest'; document.head.appendChild(m);
   }
   </script>
-  <link rel="stylesheet" href="css/app.css?v=2026102703">
+  <link rel="stylesheet" href="css/app.css?v=2026102901">
 </head>
 <body data-view="map">
   <header class="app-header">
@@ -75,6 +75,7 @@
     <button id="btn-add-child" type="button" title="選択中のカードに子カードを足す（Tab）">＋ 子カード</button>
     <button id="btn-multi" type="button" title="複数のカードを選ぶ（Macは Shift＋クリック）。選んだ順にタイムラインへ並べられます">☑ 複数選択</button>
     <button id="btn-draw" type="button" title="選択中のカードに絵を描く（カードの絵の部分をダブルクリックでも開けます）">✎ 描く</button>
+    <button id="btn-image" type="button" title="写真や絵のファイルを読み込んでカードにする（複数可。マップへドラッグ＆ドロップでも）">🖼 画像</button>
     <button id="btn-peel" type="button" title="選択中のカードを保留トレイへ（Delete）">剥がす</button>
     <button id="btn-copy" type="button" title="選択中のカードを子カードごとコピー（⌘/Ctrl+C）">コピー</button>
     <button id="btn-cut" type="button" title="選択中のカードを子カードごと切り取り（⌘/Ctrl+X）。保留トレイに入るので戻せます">切り取り</button>
@@ -219,6 +220,8 @@
       <button id="draw-undo" type="button" title="取り消し（⌘/Ctrl+Z）">↶ 取り消し</button>
       <button id="draw-redo" type="button" title="やり直し（⌘/Ctrl+Shift+Z）">↷ やり直し</button>
       <label class="draw-paper" title="PAN・FOLLOW用に長い絵を描くときは横長・縦長に">用紙 <select id="draw-paper"></select></label>
+      <button id="draw-image" type="button" title="写真や絵を下に敷く（上から描けます。ここへドラッグ＆ドロップでも）">🖼 画像</button>
+      <button id="draw-image-clear" type="button" title="敷いた画像を外す（線は残ります）" hidden>画像を外す</button>
       <button id="draw-camera" type="button" title="このカットのカメラワーク（PAN・T.U・F.Iなど）">🎥 カメラ</button>
       <button id="draw-clear" type="button">全部消す</button>
       <button id="draw-copy" type="button" title="この絵をコピー（⌘/Ctrl+C）">絵をコピー</button>
@@ -238,23 +241,24 @@
 
   <!-- 読み込み順に意味があります（ES Modulesは使わない方針）。
        ?v= は版番号：公開版を更新したら全部を新しい番号にする（古いファイルがブラウザに残らないように） -->
-  <script src="js/config.js?v=2026102703"></script>
-  <script src="js/util.js?v=2026102703"></script>
-  <script src="js/model.js?v=2026102703"></script>
-  <script src="js/storage.js?v=2026102703"></script>
-  <script src="js/map.js?v=2026102703"></script>
-  <script src="js/tray.js?v=2026102703"></script>
-  <script src="js/timeline.js?v=2026102703"></script>
-  <script src="js/draw.js?v=2026102703"></script>
-  <script src="js/camera.js?v=2026102703"></script>
-  <script src="js/vconte.js?v=2026102703"></script>
-  <script src="js/clipboard.js?v=2026102703"></script>
-  <script src="js/outline.js?v=2026102703"></script>
-  <script src="js/zip.js?v=2026102703"></script>
-  <script src="js/project.js?v=2026102703"></script>
-  <script src="js/pdf.js?v=2026102703"></script>
-  <script src="js/mp4.js?v=2026102703"></script>
-  <script src="js/movie.js?v=2026102703"></script>
-  <script src="js/app.js?v=2026102703"></script>
+  <script src="js/config.js?v=2026102901"></script>
+  <script src="js/util.js?v=2026102901"></script>
+  <script src="js/model.js?v=2026102901"></script>
+  <script src="js/storage.js?v=2026102901"></script>
+  <script src="js/map.js?v=2026102901"></script>
+  <script src="js/tray.js?v=2026102901"></script>
+  <script src="js/timeline.js?v=2026102901"></script>
+  <script src="js/draw.js?v=2026102901"></script>
+  <script src="js/camera.js?v=2026102901"></script>
+  <script src="js/vconte.js?v=2026102901"></script>
+  <script src="js/clipboard.js?v=2026102901"></script>
+  <script src="js/outline.js?v=2026102901"></script>
+  <script src="js/zip.js?v=2026102901"></script>
+  <script src="js/project.js?v=2026102901"></script>
+  <script src="js/pdf.js?v=2026102901"></script>
+  <script src="js/mp4.js?v=2026102901"></script>
+  <script src="js/movie.js?v=2026102901"></script>
+  <script src="js/images.js?v=2026102901"></script>
+  <script src="js/app.js?v=2026102901"></script>
 </body>
 </html>

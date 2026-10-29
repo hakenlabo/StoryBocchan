@@ -469,6 +469,9 @@ body[data-view="timeline"] .toolbar > :not(.keep) { visibility: hidden; }
 }
 #draw-canvas {
   background: #fff;
+  background-repeat: no-repeat;   /* 敷いた写真・絵（用紙に収めて真ん中） */
+  background-position: center;
+  background-size: contain;
   box-shadow: 0 4px 24px rgba(0,0,0,.35);
   touch-action: none;
   cursor: crosshair;

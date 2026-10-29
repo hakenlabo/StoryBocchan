@@ -345,8 +345,10 @@
       const pw = C.DRAW_BASE_W * paper.w, ph = (C.DRAW_BASE_W / ratio) * paper.h;
       const k = Math.min(w / pw, (thumbH * s) / ph);
       // 透明な層に描いてから重ねる（消しゴムで紙に穴があいて黒くならないように）
+      const ix = x + (w - pw * k) / 2, iy = y + (thumbH * s - ph * k) / 2;
+      if (c.image) { ctx.translate(ix, iy); AP.Draw.drawImage(ctx, c.image, paper, Store.settings().aspect, k); ctx.translate(-ix, -iy); }
       if (c.strokes.length) {
-        ctx.drawImage(AP.Draw.strokesLayer(c.strokes, pw * k, ph * k, k), x + (w - pw * k) / 2, y + (thumbH * s - ph * k) / 2);
+        ctx.drawImage(AP.Draw.strokesLayer(c.strokes, pw * k, ph * k, k), ix, iy);
       }
       ctx.restore();
       ctx.save();
@@ -379,6 +381,7 @@
   const choice = { kind: 'storyboard', paper: 'A4', perPage: C.PDF_CUTS_PER_PAGE };
 
   async function build(opts) {
+    await AP.Draw.imagesReady(); // 写真・絵の画像を読み込んでから描く
     const pages = opts.kind === 'map' ? mapPages(opts) : storyboardPages(opts);
     const blob = await makePdf(pages);
     const name = String(Store.project().title || '無題の作品').replace(/[\\/:*?"<>|\s]+/g, '_').slice(0, 40) +

@@ -98,7 +98,7 @@
       if (c.linkOf) el.title = '連動カット：絵と文字は元のカードと共通です';
       const col = Store.colorOf(c);
       if (col) { el.classList.add('colored'); el.style.setProperty('--tl-color', col.line); }
-      const url = AP.Draw.thumbURL(src.strokes, Store.settings().aspect, src.paper);
+      const url = AP.Draw.thumbURL(src.strokes, Store.settings().aspect, src.paper, src.image);
       if (url) el.querySelector('.tl-thumb').style.backgroundImage = 'url(' + url + ')';
       track.appendChild(el);
       start += c.duration;
