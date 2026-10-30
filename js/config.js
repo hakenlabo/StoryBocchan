@@ -6,7 +6,7 @@ window.AP = window.AP || {};
 
 AP.CONFIG = {
   APP_NAME: 'ストーリー坊ちゃん',     // アプリの名前（画面・保存ファイルの説明に出る）
-  APP_VERSION: '2026102901',          // 版番号（index.html の ?v=・sw.js の VERSION と同じ。tools/bump-version.sh で変える）
+  APP_VERSION: '2026103001',          // 版番号（index.html の ?v=・sw.js の VERSION と同じ。tools/bump-version.sh で変える）
 
   // ---- カードの見た目 ----
   CARD_W: 160,                 // カード幅（ワールド座標px）。高さはサムネ（画面比）＋テキストで決まる
@@ -91,6 +91,8 @@ AP.CONFIG = {
   DRAW_PEN_ONLY_AFTER_PEN: true, // Apple Pencilを一度使ったら、指では描かない（手のひら誤爆対策）
   DRAW_MIN_POINT_DIST: 1.5,      // これより近い点は記録しない（データを軽くする）
   DRAW_UNDO_LIMIT: 100,
+  LASSO_HANDLE_PX: 9,            // 投げ縄で選んだ線の枠：角（拡大縮小）と回転のつまみの大きさ（画面px。指は1.8倍）
+  LASSO_ROTATE_OFFSET_PX: 28,    // 回転のつまみを枠の上辺からどれだけ離すか（画面px）
   DRAW_THUMB_W: 320,             // サムネイル画像の幅（px）
   IMAGE_MAX_PX: 1600,            // 読み込んだ写真・絵は長い辺をこの大きさまで縮める（作品データを重くしすぎないため）
   IMAGE_JPEG_QUALITY: 0.85,      // 読み込んだ画像を JPEG にするときの画質
