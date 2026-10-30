@@ -193,10 +193,15 @@
           drawLines(ctx, wrap(ctx, 'S' + p.sceneNo + ' ' + Store.sceneName(p.sceneId), colC - 12 * u, 3), xs[0] + 8 * u, y + 24 * u, 19 * u);
           ctx.fillStyle = '#111';
         }
-        font(ctx, 30 * u, true);
-        ctx.textAlign = 'center';
-        ctx.fillText(String(p.cutNo), (xs[0] + xs[1]) / 2, y + rowH / 2 + 12 * u);
-        ctx.textAlign = 'left';
+        // 同じカットの続きの絵は番号を書かない（ページの頭で続くときだけ薄く）
+        if (p.part === 1 || ri === 0) {
+          font(ctx, 30 * u, true);
+          ctx.textAlign = 'center';
+          if (p.part > 1) ctx.fillStyle = '#999';
+          ctx.fillText(p.part > 1 ? '(' + p.cutNo + ')' : String(p.cutNo), (xs[0] + xs[1]) / 2, y + rowH / 2 + 12 * u);
+          ctx.fillStyle = '#111';
+          ctx.textAlign = 'left';
+        }
         // 画面：最初のコマ（カメラワークの始まり）を描く
         const pic = document.createElement('canvas');
         pic.width = Math.round(picW);
@@ -224,10 +229,13 @@
         // セリフ（メモ）
         drawLines(ctx, wrap(ctx, src.note || '', colNote - pad * 2, Math.max(1, Math.floor((rowH - 30 * u) / lh))), xs[3] + pad, y + 30 * u, lh);
         // 秒
-        font(ctx, 22 * u, true);
-        ctx.textAlign = 'center';
-        ctx.fillText(U.framesToLabel(p.card.duration, fps), (xs[4] + xs[5]) / 2, y + rowH / 2 + 8 * u);
-        ctx.textAlign = 'left';
+        // 秒：ふつうはこの絵の尺。同じカットの絵が続くときは、カットの最後の絵にカット全体の尺
+        if (p.parts === 1 || p.part === p.parts) {
+          font(ctx, 22 * u, true);
+          ctx.textAlign = 'center';
+          ctx.fillText(U.framesToLabel(p.parts > 1 ? p.cutFrames : p.card.duration, fps), (xs[4] + xs[5]) / 2, y + rowH / 2 + 8 * u);
+          ctx.textAlign = 'left';
+        }
       });
       // 罫線
       ctx.strokeStyle = '#333';
@@ -236,7 +244,10 @@
       ctx.lineWidth = 1.2 * u;
       for (let r = 0; r <= perPage; r++) {
         const yy = rowsTop + r * rowH;
-        ctx.beginPath(); ctx.moveTo(x0, yy); ctx.lineTo(x1, yy); ctx.stroke();
+        // 同じカットの絵のあいだは、カットと秒の欄の横線を引かない（1カットに見えるように）
+        const nx = slice[r];
+        const inCut = r > 0 && nx && nx.part > 1;
+        ctx.beginPath(); ctx.moveTo(inCut ? xs[1] : x0, yy); ctx.lineTo(inCut ? xs[4] : x1, yy); ctx.stroke();
       }
       xs.slice(1, 5).forEach(function (xx) {
         ctx.beginPath(); ctx.moveTo(xx, headTop); ctx.lineTo(xx, rowsTop + rowH * perPage); ctx.stroke();
@@ -246,7 +257,7 @@
       ctx.fillStyle = '#333';
       ctx.textAlign = 'right';
       ctx.fillText('このページ ' + U.framesToLabel(pageFrames, fps) + '　／　総尺 ' + U.framesToLabel(totalFrames, fps) +
-        '（' + list.length + 'カット）', x1, pg.H - M + 8 * u);
+        '（' + list.filter(function (p) { return p.part === 1; }).length + 'カット）', x1, pg.H - M + 8 * u);
       ctx.textAlign = 'left';
       if (!list.length) {
         font(ctx, 22 * u);

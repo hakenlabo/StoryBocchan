@@ -115,7 +115,8 @@
     for (let i = 0; i < list.length; i++) {
       AP.Vconte.renderCut(ctx, cv.width, cv.height, list[i].card, 0, i, { overlays: false });
       const bytes = await canvasBytes(cv);
-      const name = 'S' + String(list[i].sceneNo).padStart(2, '0') + '_C' + String(list[i].cutNo).padStart(3, '0');
+      const name = 'S' + String(list[i].sceneNo).padStart(2, '0') + '_C' + String(list[i].cutNo).padStart(3, '0') +
+        (list[i].parts > 1 ? '-' + list[i].part : ''); // 同じカットの絵が続くときは -1, -2…
       if (bytes) files.push({ name: 'images/' + name + '.png', data: bytes });
     }
     files.push({ name: 'はじめに読んでください.txt', data:

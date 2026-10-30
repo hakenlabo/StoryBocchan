@@ -945,3 +945,25 @@ html, body, button, label, select, input, textarea, .app-header, .toolbar, .draw
 .cam-frames-note button { min-height: 26px; font-size: 12px; padding: 0 8px; }
 .cam-hold-note { margin: -2px 0 8px 110px; color: var(--sub); }
 .cam-hold-note.warn { color: #c92a2a; }
+
+/* ---- 同じカット（タイムラインで前のカードとつなぐ） ---- */
+.tl-no small { font-size: 9px; font-weight: 600; margin-left: 1px; }
+.tl-join {
+  position: absolute; left: -9px; top: 50%; z-index: 3; transform: translateY(-50%);
+  width: 18px; height: 18px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 12px; line-height: 1; cursor: pointer;
+  background: #fff; color: var(--sub); border: 1px solid var(--border); opacity: .55;
+}
+.tl-card:hover .tl-join, .tl-join.on { opacity: 1; }
+.tl-join.on { background: #7048e8; color: #fff; border-color: #7048e8; }
+.tl-card { overflow: visible; }
+.tl-card .tl-thumb { border-radius: 3px 3px 0 0; overflow: hidden; }
+.tl-group {
+  position: absolute; top: 20px; height: calc(var(--tl-thumb-h) + 86px);
+  border: 2px solid #7048e8; border-radius: 6px; background: rgba(112,72,232,.06); pointer-events: none;
+}
+.vc-seg.cont { border-left: 1px dashed rgba(255,255,255,.35); }
+@media (pointer: coarse) {
+  .tl-join { width: 26px; height: 26px; left: -13px; font-size: 15px; opacity: .8; }
+}

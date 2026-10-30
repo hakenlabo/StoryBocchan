@@ -42,7 +42,8 @@
     const total = scene ? Store.totalFrames(scene) : 0;
     const selected = AP.MapView.selected();
 
-    totalEl.textContent = totalLabel(total, fps) + '　' + list.length + 'カット';
+    const groups = scene ? Store.cutGroups(scene) : [];
+    totalEl.textContent = totalLabel(total, fps) + '　' + groups.length + 'カット' + (groups.length !== list.length ? '（絵 ' + list.length + '枚）' : '');
     zoomEl.textContent = Math.round(zoom * 100) + '%';
 
     track.innerHTML = '';
@@ -75,17 +76,35 @@
       track.appendChild(empty);
     }
 
+    // 同じカットにまとめた絵を囲む枠（カードの後ろ）
+    let gx = 0;
+    groups.forEach(function (g) {
+      if (g.cards.length > 1) {
+        const box = document.createElement('div');
+        box.className = 'tl-group';
+        box.style.left = (pad + gx * ppf - 3) + 'px';
+        box.style.width = (g.frames * ppf + 6) + 'px';
+        box.title = 'C' + g.no + '（絵 ' + g.cards.length + '枚・' + U.framesToLabel(g.frames, fps) + '）';
+        track.appendChild(box);
+      }
+      gx += g.frames;
+    });
+    const noOf = new Map();
+    groups.forEach(function (g) { g.cards.forEach(function (c, k) { noOf.set(c.id, { no: g.no, part: k + 1, parts: g.cards.length }); }); });
+
     let start = 0;
     list.forEach(function (c, i) {
+      const cn = noOf.get(c.id) || { no: i + 1, part: 1, parts: 1 };
       const el = document.createElement('div');
       const src = Store.source(c);
-      el.className = 'tl-card' + (src.id === selected ? ' selected' : '') + (c.linkOf ? ' linked' : '');
+      el.className = 'tl-card' + (src.id === selected ? ' selected' : '') + (c.linkOf ? ' linked' : '') + (cn.part > 1 ? ' joined' : '');
       el.dataset.id = c.id;
       el.dataset.src = src.id;
       el.style.left = (pad + start * ppf) + 'px';
       el.style.width = Math.max(C.TL_MIN_CARD_PX, c.duration * ppf) + 'px';
       el.innerHTML =
-        '<div class="tl-thumb"><span class="tl-no">' + (i + 1) + '</span></div>' +
+        '<div class="tl-thumb"><span class="tl-no">' + cn.no + (cn.parts > 1 ? '<small>-' + cn.part + '</small>' : '') + '</span></div>' +
+        (i > 0 ? '<div class="tl-join' + (cn.part > 1 ? ' on' : '') + '" title="' + (cn.part > 1 ? '前のカードと別のカットにする' : '前のカードと同じカットにする（動きの指示で絵を分けたときなど）') + '">' + (cn.part > 1 ? '＝' : '＋') + '</div>' : '') +
         '<div class="tl-text"></div>' +
         '<div class="tl-dur" title="タップして尺を入力（秒+コマ）">' + U.framesToLabel(c.duration, fps) + '</div>' +
         '<div class="tl-cam' + (AP.Camera.isEmpty(c.camera) ? ' empty' : '') + '" title="カメラワーク（PAN・T.U・F.Iなど）">' +
@@ -302,7 +321,13 @@
 
     if (p.mode === 'press') {
       // タップ
-      if (p.target.closest('.tl-remove')) {
+      if (p.target.closest('.tl-join')) {
+        const card = Store.get(p.id);
+        Store.checkpoint();
+        Store.setJoinPrev(p.id, !card.joinPrev);
+        Store.checkpoint();
+        U.toast(card.joinPrev ? '前のカードと同じカットにしました（カット番号は1つとして数えます）' : '前のカードと別のカットにしました');
+      } else if (p.target.closest('.tl-remove')) {
         Store.unadopt(p.id);
         U.toast('タイムラインから外しました（カードはマップに残っています）');
       } else if (p.target.closest('.tl-note')) {
@@ -436,7 +461,7 @@
   function renderSceneSelect() {
     const ids = Store.scenes();
     if (scene && ids.indexOf(scene) < 0) ids.push(scene);
-    const key = ids.map(function (id) { return id + ':' + Store.sceneName(id) + ':' + Store.timelineCards(id).length; }).join('|') + '#' + scene;
+    const key = ids.map(function (id) { return id + ':' + Store.sceneName(id) + ':' + Store.cutCount(id); }).join('|') + '#' + scene;
     if (sceneSel.dataset.key === key) return;
     sceneSel.dataset.key = key;
     sceneSel.innerHTML = '';
@@ -449,7 +474,7 @@
     ids.forEach(function (id, i) {
       const o = document.createElement('option');
       o.value = id;
-      const n = Store.timelineCards(id).length;
+      const n = Store.cutCount(id);
       o.textContent = 'シーン' + (i + 1) + '：' + Store.sceneName(id) + '（' + n + 'カット）';
       sceneSel.appendChild(o);
     });

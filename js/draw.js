@@ -287,7 +287,8 @@
     const card = Store.get(cardId);
     const list = Store.timelineCards(Store.sceneOf(card)); // 前後移動は同じシーンの中で
     const i = list.findIndex(function (c) { return c.id === cardId; });
-    titleEl.textContent = (i >= 0 ? '#' + (i + 1) + '  ' : '') + (card.linkOf ? '🔗 ' : '') + (Store.source(card).text || '（無題）');
+    const no = Store.cutNoOf(cardId);
+    titleEl.textContent = (no ? '#' + no + '  ' : '') + (card.linkOf ? '🔗 ' : '') + (Store.source(card).text || '（無題）');
     prevBtn.disabled = !(i > 0);
     nextBtn.disabled = !(i >= 0 && i < list.length - 1);
     prevBtn.title = nextBtn.title = i >= 0 ? 'タイムラインの前後のカードへ' : 'タイムラインに採用すると前後に移動できます';

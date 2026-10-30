@@ -26,7 +26,8 @@
     let t = 0;
     // シーン構成でオンのシーンを順に
     Store.playlist().forEach(function (p) {
-      cuts.push({ card: p.card, start: t, end: t + p.card.duration, sceneId: p.sceneId, sceneNo: p.sceneNo, cutNo: p.cutNo });
+      cuts.push({ card: p.card, start: t, end: t + p.card.duration, sceneId: p.sceneId, sceneNo: p.sceneNo, cutNo: p.cutNo,
+        part: p.part, parts: p.parts, cutOffset: p.cutOffset, cutFrames: p.cutFrames });
       t += p.card.duration;
     });
     total = t;
@@ -50,7 +51,10 @@
       c2d.fillRect(0, 0, W, H);
       return;
     }
-    renderCut(c2d, W, H, cuts[i].card, f - cuts[i].start, i, { label: 'S' + cuts[i].sceneNo + ' C' + cuts[i].cutNo });
+    const cut = cuts[i];
+    // 同じカットの絵が続くときは、時間もカット全体で数える
+    renderCut(c2d, W, H, cut.card, f - cut.start, i, { label: 'S' + cut.sceneNo + ' C' + cut.cutNo,
+      cutLocal: cut.cutOffset + f - cut.start, cutDur: cut.cutFrames });
   }
 
   // 1カットの local コマ目を描く。cutCard はタイムライン上のカード（連動カットならそれ自身。尺とカメラはこちら）
@@ -122,7 +126,9 @@
     c2d.textBaseline = 'middle';
     if (st.vcShowCutNo) {
       const camLabel = AP.Camera.label(cam);
-      const label = ((opts && opts.label) || 'C' + (index + 1)) + '  ' + U.framesToLabel(local, st.fps) + ' / ' + U.framesToLabel(duration, st.fps) +
+      const cl = opts && opts.cutLocal !== undefined ? opts.cutLocal : local;
+      const cd = opts && opts.cutDur !== undefined ? opts.cutDur : duration;
+      const label = ((opts && opts.label) || 'C' + (index + 1)) + '  ' + U.framesToLabel(cl, st.fps) + ' / ' + U.framesToLabel(cd, st.fps) +
         (camLabel ? '  ' + camLabel : '');
       const pad = fs * 0.4;
       const w = c2d.measureText(label).width + pad * 2;
@@ -178,10 +184,10 @@
     cuts.forEach(function (cut, i) {
       const s = document.createElement('div');
       const first = i === 0 || cuts[i - 1].sceneId !== cut.sceneId;
-      s.className = 'vc-seg' + (first ? ' scene-start' : '') + (cut.sceneNo % 2 ? '' : ' alt');
+      s.className = 'vc-seg' + (first ? ' scene-start' : '') + (cut.sceneNo % 2 ? '' : ' alt') + (cut.part > 1 ? ' cont' : '');
       s.style.flexGrow = cut.card.duration;
       s.title = 'S' + cut.sceneNo + '（' + Store.sceneName(cut.sceneId) + '） C' + cut.cutNo + ' ' + (Store.source(cut.card).text || '（無題）');
-      s.textContent = first ? 'S' + cut.sceneNo + ' ' + cut.cutNo : cut.cutNo;
+      s.textContent = first ? 'S' + cut.sceneNo + ' ' + cut.cutNo : (cut.part > 1 ? '' : cut.cutNo); // 同じカットの続きは番号を出さない
       const col = Store.colorOf(cut.card);
       if (col) s.style.boxShadow = 'inset 0 -5px 0 ' + col.line;
       segsEl.appendChild(s);
@@ -369,7 +375,7 @@
       row.innerHTML =
         '<label class="vc-seq-main"><input type="checkbox"' + (x.on ? ' checked' : '') + '>' +
         '<span class="vc-seq-name"></span></label>' +
-        '<span class="vc-seq-meta">' + Store.timelineCards(x.id).length + 'カット・' + U.framesToLabel(frames, fps) + '</span>' +
+        '<span class="vc-seq-meta">' + Store.cutCount(x.id) + 'カット・' + U.framesToLabel(frames, fps) + '</span>' +
         '<button type="button" data-mv="-1" title="前へ"' + (i === 0 ? ' disabled' : '') + '>↑</button>' +
         '<button type="button" data-mv="1" title="後ろへ"' + (i === seq.length - 1 ? ' disabled' : '') + '>↓</button>';
       row.querySelector('.vc-seq-name').textContent = Store.sceneName(x.id);

@@ -108,7 +108,7 @@
   const memory = new Map(); // 保存できない環境でも、開いている間は切り替えられるように
 
   function summary(p) {
-    const cuts = (p.cards || []).filter(function (c) { return c.timelineOrder !== null && c.status === 'active'; }).length;
+    const cuts = (p.cards || []).filter(function (c) { return c.timelineOrder !== null && c.status === 'active' && !c.joinPrev; }).length; // 同じカットの続きは数えない
     return { id: p.id, title: p.title || '無題の作品', updatedAt: p.updatedAt || 0, createdAt: p.createdAt || 0,
       cards: (p.cards || []).filter(function (c) { return !c.linkOf; }).length, cuts: cuts };
   }

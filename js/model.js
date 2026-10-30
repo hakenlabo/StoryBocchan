@@ -29,6 +29,7 @@
       camera: null,      // カメラワーク（js/camera.js）。なしは null
       paper: { w: 1, h: 1 }, // 用紙の大きさ（画面の何倍か）。PAN・FOLLOW用の長い絵。絵と一緒なので連動カットは元のものを使う
       color: null,       // カードの色（config.CARD_COLORS の番号）。null＝先祖の色（なければ白）
+      joinPrev: false,   // タイムラインで前のカードと同じカット（動きの指示などで絵を分けたとき）。連動カットも自分で持つ
       image: null,       // 読み込んだ写真・絵 { src: JPEGのdata URL, w, h }。線の下に敷く。絵と一緒なので連動カットは元のものを使う
     }, props || {});
   }
@@ -577,21 +578,57 @@
     S.sequence().forEach(function (x) {
       if (!x.on) return;
       sceneNo++;
-      S.timelineCards(x.id).forEach(function (c, i) {
-        out.push({ card: c, sceneId: x.id, sceneNo: sceneNo, cutNo: i + 1 });
+      S.cutGroups(x.id).forEach(function (g) {
+        let offset = 0;
+        g.cards.forEach(function (c, k) {
+          // part＝カットの中の何枚目か、cutOffset／cutFrames＝カットの中での始まりと、カット全体の尺（コマ）
+          out.push({ card: c, sceneId: x.id, sceneNo: sceneNo, cutNo: g.no, part: k + 1, parts: g.cards.length, cutOffset: offset, cutFrames: g.frames });
+          offset += c.duration;
+        });
       });
     });
     return out;
   };
 
-  // カードid（連動カットは元のカード）→ シーン内のカット番号（1始まり）の配列
+  // シーンのカット：タイムラインのカードを、「前のカードと同じカット」（joinPrev）でまとめたもの
+  // → [{ no: カット番号（1始まり）, cards: [...], frames: カット全体の尺 }]。シーンの最初のカードは必ず新しいカット
+  S.cutGroups = function (sceneId) {
+    const out = [];
+    S.timelineCards(sceneId).forEach(function (c) {
+      const g = out[out.length - 1];
+      if (g && c.joinPrev) { g.cards.push(c); g.frames += c.duration; }
+      else out.push({ no: out.length + 1, cards: [c], frames: c.duration });
+    });
+    return out;
+  };
+  S.cutCount = function (sceneId) { return S.cutGroups(sceneId).length; };
+
+  // タイムラインのカード1枚のカット番号（並んでいなければ null）
+  S.cutNoOf = function (id) {
+    const card = byId.get(id);
+    if (!card || card.timelineOrder === null) return null;
+    const g = S.cutGroups(S.sceneOf(card)).find(function (x) { return x.cards.some(function (c) { return c.id === id; }); });
+    return g ? g.no : null;
+  };
+
+  // 前のカードと同じカットにする／分ける
+  S.setJoinPrev = function (id, on) {
+    const c = byId.get(id);
+    if (!c) return;
+    c.joinPrev = !!on;
+    emit('join');
+  };
+
+  // カードid（連動カットは元のカード）→ シーン内のカット番号（1始まり）の配列。同じカットの絵は同じ番号
   S.cutNumbers = function () {
     const m = new Map();
     S.scenes().forEach(function (sc) {
-      S.timelineCards(sc).forEach(function (c, i) {
-        const id = c.linkOf || c.id;
-        if (!m.has(id)) m.set(id, []);
-        m.get(id).push(i + 1);
+      S.cutGroups(sc).forEach(function (g) {
+        g.cards.forEach(function (c) {
+          const id = c.linkOf || c.id;
+          if (!m.has(id)) m.set(id, []);
+          if (m.get(id).indexOf(g.no) < 0) m.get(id).push(g.no);
+        });
       });
     });
     return m;
