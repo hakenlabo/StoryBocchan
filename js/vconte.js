@@ -68,7 +68,7 @@
 
     // 絵の層：カメラが動かないなら作り置き、動くなら毎コマ線から描く（拡大してもぼやけない）
     const baseH = C.DRAW_BASE_W / U.aspectRatio(st.aspect);
-    const t = duration > 1 ? local / (duration - 1) : 0;
+    const t = AP.Camera.progress(cam, local, duration); // 止め（動き出すまで・止まってから）も入れた進み具合
     const paper = card.paper || { w: 1, h: 1 };
     const v = AP.Camera.view(cam, t, baseH, paper);
     const still = !cam || !cam.move || cam.move === 'none';

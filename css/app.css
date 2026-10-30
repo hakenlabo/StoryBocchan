@@ -611,7 +611,7 @@ body[data-view="outline"] .toolbar > * { visibility: hidden; }
 .cam-preview canvas { border: 1px solid var(--border); background: #fff; }
 .cam-pv-note { font-size: 11px; color: var(--sub); }
 .cam-row { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
-.cam-label { width: 64px; flex: none; font-size: 13px; color: var(--sub); }
+.cam-label { width: 100px; flex: none; font-size: 13px; color: var(--sub); }
 .cam-seg { display: flex; flex-wrap: wrap; gap: 4px; }
 .cam-seg button { min-height: 32px; font-size: 13px; }
 .cam-seg button.active, .cam-grid button.active { background: var(--ink); color: #fff; border-color: var(--ink); }
@@ -646,7 +646,7 @@ body[data-view="outline"] .toolbar > * { visibility: hidden; }
 
 .draw-paper { display: flex; align-items: center; gap: 4px; font-size: 13px; color: var(--sub); }
 .draw-paper select { min-height: 34px; border: 1px solid var(--border); border-radius: 6px; background: #fff; padding: 0 4px; }
-.cam-hint { margin: -2px 0 8px 74px; font-size: 12px; color: #b8650a; line-height: 1.5; }
+.cam-hint { margin: -2px 0 8px 110px; font-size: 12px; color: #b8650a; line-height: 1.5; }
 
 /* ---- プロジェクト ---- */
 .pj-dialog { max-width: 620px; max-height: calc(100vh - 32px); overflow-y: auto; }
@@ -934,3 +934,14 @@ html, body, button, label, select, input, textarea, .app-header, .toolbar, .draw
 .vc-dur-input { width: 76px; min-height: 34px; padding: 0 6px; font-size: 16px; border-radius: 6px; border: 1.5px solid var(--accent); text-align: center; }
 .vc-bar.edge, .vc-bar.resizing { cursor: ew-resize; }
 .vc-bar.resizing .vc-seg.current { background: #2f9e44; }
+
+/* ---- カメラ：T.U／T.B の枠の調整・止め ---- */
+.cam-frames-row { align-items: flex-start; }
+.cam-frames { display: flex; flex-direction: column; gap: 4px; }
+.cam-frame-editor { border: 1px solid var(--border); background: #fff; touch-action: none; }
+.cam-frames-note { font-size: 12px; color: var(--sub); }
+.cam-frames-note .from { color: #1f9d55; }
+.cam-frames-note .to { color: #e8590c; }
+.cam-frames-note button { min-height: 26px; font-size: 12px; padding: 0 8px; }
+.cam-hold-note { margin: -2px 0 8px 110px; color: var(--sub); }
+.cam-hold-note.warn { color: #c92a2a; }

@@ -6,7 +6,7 @@ window.AP = window.AP || {};
 
 AP.CONFIG = {
   APP_NAME: 'ストーリー坊ちゃん',     // アプリの名前（画面・保存ファイルの説明に出る）
-  APP_VERSION: '2026103001',          // 版番号（index.html の ?v=・sw.js の VERSION と同じ。tools/bump-version.sh で変える）
+  APP_VERSION: '2026103002',          // 版番号（index.html の ?v=・sw.js の VERSION と同じ。tools/bump-version.sh で変える）
 
   // ---- カードの見た目 ----
   CARD_W: 160,                 // カード幅（ワールド座標px）。高さはサムネ（画面比）＋テキストで決まる
@@ -122,6 +122,10 @@ AP.CONFIG = {
   CAM_FADE_SECS: [0.25, 0.5, 1, 1.5, 2, 3], // FI／FO の長さ（秒）の選択肢
   CAM_DEFAULT_AMOUNT_INDEX: 1,
   CAM_PREVIEW_W: 360,                 // 設定パネルのプレビューの幅
+  CAM_HOLD_SECS: [0.5, 1, 1.5, 2, 3], // 止め（動き出すまで／止まってから）の長さ（秒）の選択肢
+  CAM_FRAME_EDITOR_W: 360,            // T.U／T.B の枠を調整する絵の幅（px。長い用紙はこの幅に収める）
+  CAM_FRAME_MAX_ZOOM: 8,              // 枠をいちばん小さくしたときの倍率
+  CAM_FRAME_HANDLE_PX: 10,            // 枠の角のつまみの大きさ（px。指は1.8倍）
 
   // ---- 取り消し（Undo／Redo） ----
   UNDO_LIMIT: 200,             // さかのぼれる回数
