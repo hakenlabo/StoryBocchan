@@ -309,22 +309,60 @@
     bar.querySelector('.tl-aud-name').textContent = '🔊 ' + cl.name;
     opts.container.appendChild(bar);
     bar.addEventListener('pointerdown', function (e) { stripDown(e, bar, cl, opts); });
+    // 切った頭・お尻は、帯の外に薄い「影」で残す（どこまで戻せるか見える。影をつかんでも伸ばせる）
+    const a = Store.get(cl.id) && Store.get(cl.id).audio;
+    const ghosts = {};
+    if (a && cl.over) {
+      ['in', 'out'].forEach(function (side) {
+        const g = document.createElement('div');
+        g.className = 'tl-aud-ghost ' + side;
+        g.style.marginTop = bar.style.marginTop;
+        g.title = side === 'in' ? '切った頭（ドラッグで戻す）' : '切ったお尻（ドラッグで戻す）';
+        g.innerHTML = '<canvas></canvas>';
+        opts.container.appendChild(g);
+        g.addEventListener('pointerdown', function (e) { stripDown(e, bar, cl, opts, side); });
+        ghosts[side] = g;
+      });
+      bar._ghosts = ghosts;
+      placeGhosts(bar, a, opts.pxPerSec(), cl);
+    }
     return { el: bar, drawn: drawWave(bar, cl, opts.widthPx) };
   }
 
+  // 影の位置と大きさ（帯の左右に、切った長さぶん）。帯の位置は CSS の値（px か %）のまま calc で足す
+  function placeGhosts(bar, a, pps, cl) {
+    const g = bar._ghosts;
+    if (!g) return;
+    const tin = (a.trimIn || 0) * pps, tout = (a.trimOut || 0) * pps;
+    g.in.hidden = tin < 1;
+    g.out.hidden = tout < 1;
+    g.in.style.left = 'calc(' + bar.style.left + ' - ' + tin + 'px)';
+    g.in.style.width = tin + 'px';
+    g.out.style.left = 'calc(' + bar.style.left + ' + ' + bar.style.width + ')';
+    g.out.style.width = tout + 'px';
+    if (cl) {
+      drawWaveRange(g.in.querySelector('canvas'), cl.src, 0, a.trimIn || 0, tin, 'rgba(240,140,0,.45)');
+      drawWaveRange(g.out.querySelector('canvas'), cl.src, a.dur - (a.trimOut || 0), a.dur, tout, 'rgba(240,140,0,.45)');
+    }
+  }
+
   function drawWave(bar, cl, w) {
-    const cv = bar.querySelector('canvas');
+    return drawWaveRange(bar.querySelector('canvas'), cl.src, cl.from, cl.from + (cl.end - cl.start), w, '#f08c00');
+  }
+
+  function drawWaveRange(cv, src, from, to, w, color) {
     const dpr = window.devicePixelRatio || 1;
     const h = 16;
     w = Math.max(1, Math.min(8000, w));
     const n = Math.max(1, Math.min(2000, Math.round(w / 2)));
-    const p = peaks(cl.src, cl.from, cl.from + (cl.end - cl.start), n);
     cv.width = Math.max(1, Math.round(w * dpr));
     cv.height = Math.round(h * dpr);
+    if (to - from <= 0) return true;
+    const p = peaks(src, from, to, n);
     if (!p) return false;
     const g = cv.getContext('2d');
     g.scale(dpr, dpr);
-    g.fillStyle = '#f08c00';
+    g.fillStyle = color;
     const bw = w / n;
     for (let i = 0; i < n; i++) {
       const v = Math.max(0.04, p[i]) * (h - 2) / 2;
@@ -334,7 +372,7 @@
   }
 
   let sDrag = null;
-  function stripDown(e, bar, cl, opts) {
+  function stripDown(e, bar, cl, opts, forceMode) {
     if (sDrag) return;
     e.stopPropagation();
     e.preventDefault();
@@ -342,9 +380,12 @@
     if (!card || !card.audio) return;
     const r = bar.getBoundingClientRect();
     const grab = C.TL_AUDIO_EDGE_PX * (e.pointerType === 'mouse' ? 1 : 1.8);
-    const mode = e.clientX - r.left < grab ? 'in' : (r.right - e.clientX < grab ? 'out' : 'move');
+    // 端の近く（内側も外側も）をつかんだら切る／戻す。短い帯は真ん中を動かせるように、つかめる幅を帯の 1/3 までにする
+    const zone = Math.min(grab, r.width / 3);
+    const mode = forceMode || (e.clientX - r.left < zone ? 'in' : (r.right - e.clientX < zone ? 'out' : 'move'));
     const d = sDrag = { pointerId: e.pointerId, bar: bar, opts: opts, mode: mode, x0: e.clientX, a0: Object.assign({}, card.audio),
-      left0: bar.offsetLeft, width0: bar.offsetWidth, moved: false, next: null, tip: null };
+      left0: bar.offsetLeft, width0: bar.offsetWidth, moved: false, next: null, tip: null, cl: cl };
+    const cap = e.currentTarget || bar;
     function move(ev) { if (ev.pointerId === d.pointerId) stripMove(ev, d); }
     function up(ev) {
       if (ev.pointerId !== d.pointerId || sDrag !== d) return;
@@ -355,7 +396,8 @@
       const ok = ev.type !== 'pointercancel';
       opts.onEnd(ok && d.moved ? d.next : null, ok && d.moved);
     }
-    bar.setPointerCapture(e.pointerId);
+    // 影をつかんだときも帯でつかまえる（影は描き直しで消えることがあるため）
+    try { bar.setPointerCapture(e.pointerId); } catch (err) { if (cap !== bar) cap.setPointerCapture(e.pointerId); }
     bar.addEventListener('pointermove', move);
     ['pointerup', 'pointercancel', 'lostpointercapture'].forEach(function (t) { bar.addEventListener(t, up); });
     opts.onStart();
@@ -391,6 +433,14 @@
       label = 'お尻を ' + next.trimOut.toFixed(2) + '秒 切る';
     }
     d.next = next;
+    if (d.bar._ghosts) {
+      // 影も一緒に動かす（px で直接）
+      const g = d.bar._ghosts, l = d.bar.offsetLeft, w = d.bar.offsetWidth;
+      const tin = (next.trimIn || 0) * pps, tout = (next.trimOut || 0) * pps;
+      g.in.hidden = tin < 1; g.out.hidden = tout < 1;
+      g.in.style.left = (l - tin) + 'px'; g.in.style.width = tin + 'px';
+      g.out.style.left = (l + w) + 'px'; g.out.style.width = tout + 'px';
+    }
     if (!d.tip) { d.tip = document.createElement('div'); d.tip.className = 'tl-aud-tip'; d.bar.parentNode.appendChild(d.tip); }
     d.tip.textContent = label + '（長さ ' + playLen(next).toFixed(2) + '秒）';
     d.tip.style.left = Math.max(0, d.bar.offsetLeft) + 'px';

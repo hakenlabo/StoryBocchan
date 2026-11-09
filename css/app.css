@@ -812,7 +812,14 @@ body[data-view="outline"] .toolbar > * { visibility: hidden; }
 .tl-audio.dragging { cursor: grabbing; box-shadow: 0 2px 8px rgba(0,0,0,.25); z-index: 5; }
 .tl-audio canvas { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
 .tl-audio .tl-aud-name { position: absolute; left: 10px; top: 1px; font-size: 10px; line-height: 14px; color: #8a4b00; white-space: nowrap; pointer-events: none; text-shadow: 0 0 2px #fff; }
-.tl-audio .tl-aud-edge { position: absolute; top: 0; bottom: 0; width: 6px; background: rgba(240,140,0,.55); cursor: ew-resize; }
+.tl-audio .tl-aud-edge { position: absolute; top: 0; bottom: 0; width: 8px; background: rgba(240,140,0,.55); cursor: ew-resize; }
+.tl-aud-ghost {
+  position: absolute; height: 18px; box-sizing: border-box; border: 1px dashed rgba(240,140,0,.7); border-radius: 4px;
+  top: calc(var(--tl-thumb-h) + 104px); cursor: ew-resize; touch-action: none; overflow: hidden; background: rgba(240,140,0,.05);
+}
+.tl-aud-ghost canvas { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+.tl-aud-ghost[hidden] { display: none; }
+.vc-audio .tl-aud-ghost { top: 0; }
 .tl-audio .tl-aud-edge.l { left: 0; } .tl-audio .tl-aud-edge.r { right: 0; }
 .tl-aud-tip { position: absolute; padding: 1px 6px; font-size: 11px; background: #333; color: #fff; border-radius: 3px; white-space: nowrap; pointer-events: none; z-index: 6; }
 .tl-playhead { position: absolute; top: 20px; bottom: 0; width: 2px; background: #e03131; pointer-events: none; z-index: 6; }
