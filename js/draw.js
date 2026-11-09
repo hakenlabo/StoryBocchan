@@ -232,6 +232,7 @@
     const src = Store.get(drawId);
     document.getElementById('draw-text').value = src.text || '';
     document.getElementById('draw-note').value = src.note || '';
+    AP.Audio.fill(drawId);
   }
 
   function paperOf() { return (drawId && Store.get(drawId).paper) || { w: 1, h: 1 }; }
@@ -258,6 +259,7 @@
     endStroke();
     sel = lasso = xf = null;
     cardId = null;
+    AP.Audio.close();
     panel.hidden = true;
     document.body.classList.remove('drawing');
     resetScroll();
@@ -860,6 +862,7 @@
     currentStrokes: function () { return cardId ? strokes : []; },
     // 描画パネルで絵を書き込んでいるカード（連動カットなら元のカード）。閉じていれば null
     editingCardId: function () { return cardId ? drawId : null; },
+    openCardId: function () { return cardId; },   // 開いているカット（連動カットならそのカード。尺はこちら）
     debugInfo: function () {
       if (!cardId) return '';
       const r = canvas.getBoundingClientRect(), pr = panel.getBoundingClientRect();

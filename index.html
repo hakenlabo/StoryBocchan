@@ -44,7 +44,7 @@
     var m = document.createElement('link'); m.rel = 'manifest'; m.href = 'manifest.webmanifest'; document.head.appendChild(m);
   }
   </script>
-  <link rel="stylesheet" href="css/app.css?v=2026110902">
+  <link rel="stylesheet" href="css/app.css?v=2026110903">
 </head>
 <body data-view="map">
   <header class="app-header">
@@ -193,6 +193,7 @@
         <label class="vc-opt"><input id="vc-show-cutno" type="checkbox"> カット番号</label>
         <label class="vc-opt"><input id="vc-show-text" type="checkbox"> テキスト</label>
         <label class="vc-opt"><input id="vc-show-note" type="checkbox"> セリフ</label>
+        <label class="vc-opt" title="カットの音（描画パネルで録音・読み込み）を鳴らす"><input id="vc-sound" type="checkbox"> 音</label>
         <button id="vc-add" type="button" title="いま表示しているカットの後ろに新しいカットを足す">＋ カット</button>
         <button id="vc-camera" type="button" title="いま表示しているカットのカメラワーク">🎥 カメラ</button>
         <button id="vc-draw" type="button" title="いま表示しているカットを描画パネルで開く">✎ このカットを描く</button>
@@ -237,6 +238,20 @@
         <textarea id="draw-text" rows="2" placeholder="何が起きるカットか（ト書き）"></textarea></label>
       <label class="draw-note-field"><span>セリフ・メモ（SE・BGM）</span>
         <textarea id="draw-note" rows="2" placeholder="「セリフ」／SE：チャイム／BGM：○○ など。絵コンテのセリフ欄に入ります"></textarea></label>
+      <div id="draw-audio" class="draw-note-field draw-audio"><span>音（Vコンテでカットの頭から鳴ります）</span>
+        <div class="aud-row">
+          <button id="aud-rec" type="button" title="マイクで録音（もう一度押すと止める）">🎙 録音</button>
+          <button id="aud-file" type="button" title="音のファイル（mp3・m4a・wav など）を読み込む">🎵 ファイル</button>
+          <button id="aud-play" type="button" title="試しに聞く" hidden>▶ 聞く</button>
+          <button id="aud-del" type="button" title="音を外す" hidden>×</button>
+        </div>
+        <div class="aud-row"><span id="aud-info" class="aud-info"></span>
+          <button id="aud-fit" type="button" title="このカットの尺を音の長さまで伸ばす" hidden>尺を音に合わせる</button></div>
+        <div id="aud-opts" class="aud-row" hidden>
+          <label title="オフにすると、カット（同じカットにまとめた絵なら、まとまり）の終わりで音を止めます"><input id="aud-over" type="checkbox"> 次のカットにかかっても鳴らす</label>
+          <label title="カットの頭から何秒ずらして鳴らすか。マイナスにすると前のカットのうちから先に鳴ります">ずらす <input id="aud-shift" type="number" inputmode="decimal"> 秒</label>
+        </div>
+      </div>
     </div>
   </div>
 
@@ -244,24 +259,25 @@
 
   <!-- 読み込み順に意味があります（ES Modulesは使わない方針）。
        ?v= は版番号：公開版を更新したら全部を新しい番号にする（古いファイルがブラウザに残らないように） -->
-  <script src="js/config.js?v=2026110902"></script>
-  <script src="js/util.js?v=2026110902"></script>
-  <script src="js/model.js?v=2026110902"></script>
-  <script src="js/storage.js?v=2026110902"></script>
-  <script src="js/map.js?v=2026110902"></script>
-  <script src="js/tray.js?v=2026110902"></script>
-  <script src="js/timeline.js?v=2026110902"></script>
-  <script src="js/draw.js?v=2026110902"></script>
-  <script src="js/camera.js?v=2026110902"></script>
-  <script src="js/vconte.js?v=2026110902"></script>
-  <script src="js/clipboard.js?v=2026110902"></script>
-  <script src="js/outline.js?v=2026110902"></script>
-  <script src="js/zip.js?v=2026110902"></script>
-  <script src="js/project.js?v=2026110902"></script>
-  <script src="js/pdf.js?v=2026110902"></script>
-  <script src="js/mp4.js?v=2026110902"></script>
-  <script src="js/movie.js?v=2026110902"></script>
-  <script src="js/images.js?v=2026110902"></script>
-  <script src="js/app.js?v=2026110902"></script>
+  <script src="js/config.js?v=2026110903"></script>
+  <script src="js/util.js?v=2026110903"></script>
+  <script src="js/model.js?v=2026110903"></script>
+  <script src="js/storage.js?v=2026110903"></script>
+  <script src="js/map.js?v=2026110903"></script>
+  <script src="js/tray.js?v=2026110903"></script>
+  <script src="js/timeline.js?v=2026110903"></script>
+  <script src="js/draw.js?v=2026110903"></script>
+  <script src="js/camera.js?v=2026110903"></script>
+  <script src="js/vconte.js?v=2026110903"></script>
+  <script src="js/clipboard.js?v=2026110903"></script>
+  <script src="js/outline.js?v=2026110903"></script>
+  <script src="js/zip.js?v=2026110903"></script>
+  <script src="js/project.js?v=2026110903"></script>
+  <script src="js/pdf.js?v=2026110903"></script>
+  <script src="js/mp4.js?v=2026110903"></script>
+  <script src="js/movie.js?v=2026110903"></script>
+  <script src="js/images.js?v=2026110903"></script>
+  <script src="js/audio.js?v=2026110903"></script>
+  <script src="js/app.js?v=2026110903"></script>
 </body>
 </html>

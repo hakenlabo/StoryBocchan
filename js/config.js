@@ -6,7 +6,7 @@ window.AP = window.AP || {};
 
 AP.CONFIG = {
   APP_NAME: 'ストーリー坊ちゃん',     // アプリの名前（画面・保存ファイルの説明に出る）
-  APP_VERSION: '2026110902',          // 版番号（index.html の ?v=・sw.js の VERSION と同じ。tools/bump-version.sh で変える）
+  APP_VERSION: '2026110903',          // 版番号（index.html の ?v=・sw.js の VERSION と同じ。tools/bump-version.sh で変える）
 
   // ---- カードの見た目 ----
   CARD_W: 160,                 // カード幅（ワールド座標px）。高さはサムネ（画面比）＋テキストで決まる
@@ -131,6 +131,13 @@ AP.CONFIG = {
   CAM_FRAME_EDITOR_W: 360,            // T.U／T.B の枠を調整する絵の幅（px。長い用紙はこの幅に収める）
   CAM_FRAME_MAX_ZOOM: 8,              // 枠をいちばん小さくしたときの倍率
   CAM_FRAME_HANDLE_PX: 10,            // 枠の角のつまみの大きさ（px。指は1.8倍）
+
+  // ---- 音（カットごとの録音・音のファイル） ----
+  AUDIO_MAX_SEC: 180,          // 読み込める音の長さの上限（秒）。BGM をシーンの頭のカットに付けて流すこともあるので長め
+  AUDIO_REC_MAX_SEC: 60,       // 録音はこの秒数で自動で止まる
+  AUDIO_SHIFT_STEP: 0.1,       // 「ずらす」の刻み（秒）
+  AUDIO_MAX_BYTES: 4000000,    // 1カットの音のファイルの大きさの上限（作品データを重くしすぎないため）
+  AUDIO_WAV_RATE: 32000,       // そのままでは鳴らない形式（Chrome の録音など）を WAV にするときのサンプリング周波数
 
   // ---- 取り消し（Undo／Redo） ----
   UNDO_LIMIT: 200,             // さかのぼれる回数

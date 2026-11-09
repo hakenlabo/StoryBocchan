@@ -30,6 +30,7 @@
       paper: { w: 1, h: 1 }, // 用紙の大きさ（画面の何倍か）。PAN・FOLLOW用の長い絵。絵と一緒なので連動カットは元のものを使う
       color: null,       // カードの色（config.CARD_COLORS の番号）。null＝先祖の色（なければ白）
       joinPrev: false,   // タイムラインで前のカードと同じカット（動きの指示などで絵を分けたとき）。連動カットも自分で持つ
+      audio: null,       // カットの音（録音・音のファイル）{ src: data URL, name, dur（秒） }。セリフと同じく連動カットは元のものを使う
       image: null,       // 読み込んだ写真・絵 { src: JPEGのdata URL, w, h }。線の下に敷く。絵と一緒なので連動カットは元のものを使う
     }, props || {});
   }
@@ -665,6 +666,7 @@
       note: src.note,
       color: src.color,
       image: src.image,
+      audio: src.audio || null,
       camera: src.camera ? JSON.parse(JSON.stringify(src.camera)) : null,
       paper: { w: src.paper.w, h: src.paper.h },
       parentId: src.parentId,
@@ -679,6 +681,13 @@
   };
 
   // 写真・絵の画像を敷く（null で外す）。中身は差し替えだけで書き換えない
+  S.setAudio = function (id, audio) {
+    const c = byId.get(id);
+    if (!c) return;
+    c.audio = audio || null;
+    emit('audio');
+  };
+
   S.setImage = function (id, image) {
     const c = byId.get(id);
     if (!c) return;

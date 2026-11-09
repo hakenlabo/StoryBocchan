@@ -210,6 +210,33 @@
     playBtn.textContent = playing ? '❚❚ 一時停止' : '▶ 再生';
   }
 
+  // ---- 音：カットの頭（＋ずらし）から鳴らす。はみ出し可なら鳴り終わるまで、不可ならカット（まとまり）の終わりまで ----
+  function soundOn() { return Store.settings().vcSound !== false; }
+
+  function audioClips() {
+    const fps = Store.settings().fps;
+    const out = [];
+    cuts.forEach(function (c) {
+      const end = c.start - (c.cutOffset || 0) + (c.cutFrames || c.card.duration);
+      const cl = AP.Audio.clip(Store.source(c.card), c.start, Math.max(c.end, end), fps);
+      if (cl) out.push(cl);
+    });
+    return out;
+  }
+
+  function startSound() {
+    AP.Audio.stopClips();
+    if (!playing || !soundOn()) return;
+    const clips = audioClips();
+    if (!clips.length) return;
+    const at = frame / Store.settings().fps;
+    const startedAt = startT;
+    AP.Audio.prepare(clips.map(function (c) { return c.src; })).then(function () {
+      if (!playing || startT !== startedAt) return; // 待っている間に止めた・動かした
+      AP.Audio.playClips(clips, at + (performance.now() - startedAt) / 1000);
+    });
+  }
+
   function tick(now) {
     if (!playing) return;
     const fps = Store.settings().fps;
@@ -219,6 +246,9 @@
         startFrame = 0;
         startT = now;
         f = 0;
+        frame = 0;
+        draw();
+        startSound();
       } else {
         frame = Math.max(0, total - 1);
         pause();
@@ -237,10 +267,12 @@
     startT = performance.now();
     draw();
     raf = requestAnimationFrame(tick);
+    startSound();
   }
 
   function pause() {
     playing = false;
+    AP.Audio.stopClips();
     cancelAnimationFrame(raf);
     draw();
   }
@@ -248,7 +280,7 @@
   function seek(f) {
     if (!total) return;
     frame = U.clamp(Math.round(f), 0, total - 1);
-    if (playing) { startFrame = frame; startT = performance.now(); }
+    if (playing) { startFrame = frame; startT = performance.now(); startSound(); }
     draw();
   }
 
@@ -353,6 +385,7 @@
     buildBar();
     renderSequence();
     layout();
+    AP.Audio.prepare(audioClips().map(function (c) { return c.src; })); // 再生ボタンですぐ鳴るように
   }
 
   // ---- シーン構成（どのシーンをどの順で流すか） ----
@@ -471,6 +504,9 @@
     const cutNo = document.getElementById('vc-show-cutno');
     const text = document.getElementById('vc-show-text');
     const note = document.getElementById('vc-show-note');
+    const sound = document.getElementById('vc-sound');
+    sound.checked = soundOn();
+    sound.addEventListener('change', function () { Store.setSetting('vcSound', sound.checked); if (playing) startSound(); });
     note.checked = !!Store.settings().vcShowNote;
     note.addEventListener('change', function () { Store.setSetting('vcShowNote', note.checked); });
     cutNo.checked = !!Store.settings().vcShowCutNo;

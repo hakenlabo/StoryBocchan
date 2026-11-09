@@ -38,6 +38,7 @@
         note: card.note,
         color: card.color === undefined ? null : card.color,
         image: card.image || null,
+        audio: card.audio || null,
         camera: card.camera ? JSON.parse(JSON.stringify(card.camera)) : null,
         paper: { w: card.paper.w, h: card.paper.h },
         parentIndex: parentIndex,
@@ -91,6 +92,7 @@
         text: it.text, strokes: it.strokes, duration: it.duration, note: it.note, camera: it.camera || null, paper: it.paper || { w: 1, h: 1 },
         color: it.color === undefined ? null : it.color,
         image: it.image || null,
+        audio: it.audio || null,
         parentId: parentId, mapPos: pos,
       }));
     });

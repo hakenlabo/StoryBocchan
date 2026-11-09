@@ -102,6 +102,31 @@
       }
       gx += g.frames;
     });
+    // 音の帯：鳴る範囲を、カードの下に出す（カットをまたぐのが見えるように）。重なる音は段を分ける
+    const lanes = [];
+    let gs = 0;
+    groups.forEach(function (g) {
+      let s = gs;
+      g.cards.forEach(function (c) {
+        const cl = AP.Audio.clip(Store.source(c), s, gs + g.frames, fps);
+        s += c.duration;
+        if (!cl) return;
+        let lane = lanes.findIndex(function (endSec) { return endSec <= cl.start; });
+        if (lane < 0) { lane = lanes.length; lanes.push(0); }
+        lanes[lane] = cl.end;
+        const bar = document.createElement('div');
+        bar.className = 'tl-audio' + (cl.over ? '' : ' cut');
+        const x0 = pad + Math.max(-pad, cl.start * fps * ppf);
+        bar.style.left = x0 + 'px';
+        bar.style.width = Math.max(4, pad + cl.end * fps * ppf - x0) + 'px';
+        bar.style.marginTop = (lane * 7) + 'px';
+        bar.title = '🔊 ' + cl.name + '（' + cl.start.toFixed(1) + '〜' + cl.end.toFixed(1) + '秒）';
+        track.appendChild(bar);
+      });
+      gs += g.frames;
+    });
+    const audioEnd = lanes.length ? Math.max.apply(null, lanes) : 0;
+    if (pad * 2 + audioEnd * fps * ppf + 40 > width) track.style.width = (pad * 2 + audioEnd * fps * ppf + 40) + 'px';
     const noOf = new Map();
     groups.forEach(function (g) { g.cards.forEach(function (c, k) { noOf.set(c.id, { no: g.no, part: k + 1, parts: g.cards.length }); }); });
 
@@ -125,7 +150,7 @@
         '<div class="tl-note' + (src.note ? '' : ' empty') + '" title="セリフ・メモ（SE・BGM）"></div>' +
         '<div class="tl-remove" title="タイムラインから外す（カードは消えません）">×</div>' +
         '<div class="tl-resize" title="ドラッグで尺を変える"></div>';
-      el.querySelector('.tl-text').textContent = (c.linkOf ? '🔗 ' : '') + (src.text || '（無題）');
+      el.querySelector('.tl-text').textContent = (c.linkOf ? '🔗 ' : '') + (src.audio ? '🔊 ' : '') + (src.text || '（無題）');
       el.querySelector('.tl-note').textContent = src.note ? '💬 ' + src.note.split('\n')[0] : '💬';
       if (c.linkOf) el.title = '連動カット：絵と文字は元のカードと共通です';
       const col = Store.colorOf(c);

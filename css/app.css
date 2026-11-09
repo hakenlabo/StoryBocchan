@@ -300,7 +300,7 @@ button:disabled { opacity: .4; cursor: default; }
 /* ---- タイムライン ---- */
 .timeline {
   height: var(--timeline-h);
-  --tl-thumb-h: calc(var(--timeline-h) - 146px); /* 帯の高さに合わせて絵を大きく */
+  --tl-thumb-h: calc(var(--timeline-h) - 162px); /* 帯の高さに合わせて絵を大きく（下に音の帯2段ぶん空ける） */
   flex: none;
   position: relative;
   display: flex;
@@ -793,6 +793,18 @@ body[data-view="outline"] .toolbar > * { visibility: hidden; }
   min-height: 52px;
 }
 .draw-note-field textarea:focus { outline: none; border-color: var(--accent); }
+.draw-audio { flex: 0 1 300px; min-width: 0; }
+.aud-row { display: flex; align-items: center; gap: 4px; flex-wrap: wrap; min-height: 30px; }
+.aud-row button { padding: 4px 8px; }
+#aud-rec.recording { background: #e03131; border-color: #e03131; color: #fff; }
+.aud-row label { display: inline-flex; align-items: center; gap: 3px; font-size: 12px; color: var(--ink); }
+#aud-shift { width: 64px; font-size: 16px; padding: 2px 4px; border: 1px solid var(--border); border-radius: 4px; }
+.tl-audio {
+  position: absolute; height: 5px; border-radius: 3px; background: #f08c00; opacity: .85; pointer-events: auto;
+  top: calc(var(--tl-thumb-h) + 104px);
+}
+.tl-audio.cut { background: #fab005; }
+.aud-info { font-size: 12px; color: var(--ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 100%; }
 
 /* セリフ・メモの表示 */
 .card-note { padding: 0 8px 6px; margin-top: -4px; font-size: 11px; color: #8a6d00; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
