@@ -266,7 +266,8 @@
   }
 
   // clips: [{ src, start, end }]（秒。Vコンテの時間）。いまの位置 at（秒）から鳴らす
-  function playClips(clips, at) {
+  // dest：鳴らす先（ムービーの録画用。なければスピーカー）
+  function playClips(clips, at, dest) {
     stopClips();
     const ac = audioCtx();
     if (!ac) return;
@@ -279,7 +280,7 @@
       if (offset >= buf.duration) return;
       const node = ac.createBufferSource();
       node.buffer = buf;
-      node.connect(ac.destination);
+      node.connect(dest || ac.destination);
       const when = now + Math.max(0, cl.start - at);
       node.start(when, offset);
       node.stop(now + (cl.end - at));
@@ -290,6 +291,41 @@
   function stopClips() {
     playingNodes.forEach(function (n) { try { n.stop(); } catch (e) { /* 終わっている */ } });
     playingNodes = [];
+  }
+
+  // ムービー書き出し用：音を1本にまとめる（先に prepare しておくこと）。totalSec の長さのモノラル。音がなければ null
+  async function mix(clips, totalSec, rate) {
+    const OAC = window.OfflineAudioContext || window.webkitOfflineAudioContext;
+    if (!OAC || !clips.length) return null;
+    const len = Math.max(1, Math.ceil(totalSec * rate));
+    const oc = new OAC(1, len, rate);
+    let any = false;
+    clips.forEach(function (cl) {
+      const buf = buffers.get(cl.src);
+      if (!buf || cl.end <= 0 || cl.start >= totalSec) return;
+      const node = oc.createBufferSource();
+      node.buffer = buf;
+      node.connect(oc.destination);
+      const offset = Math.max(0, -cl.start);
+      if (offset >= buf.duration) return;
+      node.start(Math.max(0, cl.start), offset);
+      node.stop(Math.min(totalSec, cl.end));
+      any = true;
+    });
+    if (!any) return null;
+    return new Promise(function (resolve, reject) {
+      oc.oncomplete = function (e) { resolve(e.renderedBuffer); };
+      const p = oc.startRendering();
+      if (p && p.then) p.then(resolve, reject);
+    });
+  }
+
+  // 録画用の鳴らし先（MediaStream の音声トラックになる）
+  function streamDestination() {
+    const ac = audioCtx();
+    if (!ac || !ac.createMediaStreamDestination) return null;
+    if (ac.state === 'suspended') ac.resume();
+    return ac.createMediaStreamDestination();
   }
 
   function init() {
@@ -319,6 +355,8 @@
     clip: clip,
     prepare: prepare,
     playClips: playClips,
+    mix: mix,
+    streamDestination: streamDestination,
     stopClips: stopClips,
     buffer: function (src) { return buffers.get(src) || null; },
     toWav: toWav,

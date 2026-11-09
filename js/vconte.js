@@ -576,6 +576,7 @@
     onKey: onKey,
     renderFrame: renderFrame,
     renderCut: renderCut,
+    audioClips: function () { return soundOn() ? audioClips() : []; }, // ムービー書き出し用（「音」チェックがオフなら空）
     rebuild: rebuild,
     totalFrames: function () { return total; },
     // テスト・デバッグ用

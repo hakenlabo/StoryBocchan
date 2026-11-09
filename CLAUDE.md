@@ -298,7 +298,7 @@ XMindの良さは「ポストイットのようにつけたり剥がしたりで
   - 描画パネルに「→ 次のカットにかかります」「→ カットの終わりで切れます」と出し、「尺を音に合わせる」で尺を音（＋ずらし）の長さまで伸ばせる。
 - Vコンテ：Web Audio で、再生・シーク・ループのたびに鳴らし直す（`AP.Audio.playClips`）。「音」チェック（settings.vcSound、既定オン）。タブを開いたときに先にデコードしておく。
 - タイムラインのカードの文字の前に 🔊。コピー＆ペースト・複製で音もついてくる。zip の project.json にそのまま入る。
-- **MP4書き出しにはまだ音は入らない。**
+- ムービー（MP4）書き出しに入る（下の「ムービー書き出し」）。
 
 ### セリフ・メモ（card.note）
 
@@ -324,7 +324,12 @@ XMindの良さは「ポストイットのようにつけたり剥がしたりで
     だから Baseline（42002a→42001f）を先に試し、さらに数コマ試し符号化（`MOVIE_PROBE_MS`）して本当に出てきた設定だけ使う。
   - 本番中も `MOVIE_STALL_MS` 出力がなければ「止まった」として次の設定、最後は録画に切り替える（いつまでも終わらない、を作らない）。
   - 書き出し中（busy）は close() が効かないので、終わったら finally で閉じる。
-  再生しながら録るのではないので尺より速く終わる。画面のVコンテと同じ（シーン構成・カメラ・重ね表示のチェック）。音は入らない。
+  再生しながら録るのではないので尺より速く終わる。画面のVコンテと同じ（シーン構成・カメラ・重ね表示・「音」のチェック）。
+- 音：`AP.Vconte.audioClips()`（鳴る範囲は Vコンテと同じ `AP.Audio.clip`）を `AP.Audio.mix` で OfflineAudioContext に1本のモノラルにまとめ、
+  `AudioEncoder`（AAC-LC `mp4a.40.2`、`MOVIE_AUDIO_RATE`・`MOVIE_AUDIO_BITRATE`）で符号化 → `AP.Mp4.build` の opts.audio で2本目のトラック（soun・mp4a・esds）。
+  ASC は符号化器の description、なければ自前で作る。mdat には映像の塊のあとに音の塊。
+  - 音があるのに AAC の AudioEncoder がない端末は、音を落とさないため実時間録画にする（MediaStreamDestination で鳴らして音声トラックとして録る）。
+  - 確認：Chrome で作った音つき MP4（速い書き出し・実時間録画の両方）を AVFoundation で開き、音声トラックが最後まで復号でき、音が入っていることを確かめた。
 - MP4：moov を先頭（faststart）、timescale＝fps×100・1コマ＝100、Bフレームなし（ctts なし）、キーフレームは `MOVIE_KEYFRAME_SEC` ごと。画質は `MOVIE_BITS_PER_PIXEL`。
 - VideoEncoder がないブラウザ（古い Safari など）は、キャンバスを MediaRecorder で実時間録画（mp4 が無理なら webm）。
 - 確認：Chrome で作った MP4 を Mac の AVFoundation で開いて、長さ・大きさ・全コマ復号を確かめた。

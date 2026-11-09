@@ -6,7 +6,7 @@ window.AP = window.AP || {};
 
 AP.CONFIG = {
   APP_NAME: 'ストーリー坊ちゃん',     // アプリの名前（画面・保存ファイルの説明に出る）
-  APP_VERSION: '2026110903',          // 版番号（index.html の ?v=・sw.js の VERSION と同じ。tools/bump-version.sh で変える）
+  APP_VERSION: '2026110904',          // 版番号（index.html の ?v=・sw.js の VERSION と同じ。tools/bump-version.sh で変える）
 
   // ---- カードの見た目 ----
   CARD_W: 160,                 // カード幅（ワールド座標px）。高さはサムネ（画面比）＋テキストで決まる
@@ -149,6 +149,8 @@ AP.CONFIG = {
   MOVIE_KEYFRAME_SEC: 2,       // この秒数ごとに頭出しできるコマ（キーフレーム）を入れる
   MOVIE_PROBE_MS: 3000,        // 書き出しの前に、この時間で試しに数コマ符号化してみる（出てこない設定は使わない）
   MOVIE_STALL_MS: 10000,       // 符号化がこの時間まったく進まなければ「止まった」として、次の設定か録画に切り替える
+  MOVIE_AUDIO_RATE: 48000,     // ムービーの音のサンプリング周波数（モノラル AAC）
+  MOVIE_AUDIO_BITRATE: 128000, // ムービーの音の画質（ビット毎秒）
 
   // ---- PDF書き出し ----
   PDF_DPI: 150,                // ページを描く細かさ（上げるときれいだがファイルが大きくなる）

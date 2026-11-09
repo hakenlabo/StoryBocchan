@@ -3,6 +3,9 @@
  * - 1コマずつ AP.Vconte.renderFrame で描いて、WebCodecs の VideoEncoder（H.264）で符号化し、AP.Mp4 で箱詰めする。
  *   再生しながら録るのではないので、尺より早く終わる。画面のVコンテと同じ絵（シーン構成・尺・カメラワーク・重ね表示）になる。
  * - VideoEncoder が使えないブラウザでは、キャンバスを実時間で録画する（MediaRecorder。尺と同じだけ時間がかかる）。
+ * - 音：カットの音（AP.Audio）を OfflineAudioContext で1本にまとめ、AudioEncoder（AAC-LC）で符号化して MP4 に入れる。
+ *   AudioEncoder の AAC がない端末で音があるときは、音ごと実時間で録画する（音を落とさないため）。
+ *   Vコンテの「音」チェックがオフなら音は入れない（画面のVコンテと同じ）。
  */
 (function () {
   const C = AP.CONFIG;
@@ -89,8 +92,75 @@
     }
   }
 
+  // ---- 音 ----
+  function aacConfig() {
+    return { codec: 'mp4a.40.2', sampleRate: C.MOVIE_AUDIO_RATE, numberOfChannels: 1, bitrate: C.MOVIE_AUDIO_BITRATE, aac: { format: 'aac' } };
+  }
+
+  async function aacSupported() {
+    if (typeof AudioEncoder === 'undefined' || typeof AudioData === 'undefined') return false;
+    try {
+      const r = await AudioEncoder.isConfigSupported(aacConfig());
+      return !!(r && r.supported);
+    } catch (e) { return false; }
+  }
+
+  // AAC-LC の AudioSpecificConfig（符号化器が出さなかったとき用）
+  function makeAsc(rate, channels) {
+    const idx = [96000, 88200, 64000, 48000, 44100, 32000, 24000, 22050, 16000, 12000, 11025, 8000].indexOf(rate);
+    return new Uint8Array([(2 << 3) | (idx >> 1), ((idx & 1) << 7) | (channels << 3)]);
+  }
+
+  // まとめた音（AudioBuffer、モノラル）→ MP4 用の AAC のサンプル
+  async function encodeAudio(buf) {
+    const cfg = aacConfig();
+    const samples = [];
+    let asc = null, failure = null;
+    const enc = new AudioEncoder({
+      output: function (chunk, meta) {
+        if (meta && meta.decoderConfig && meta.decoderConfig.description && !asc) {
+          const d = meta.decoderConfig.description;
+          asc = ArrayBuffer.isView(d) ? new Uint8Array(d.buffer, d.byteOffset, d.byteLength).slice() : new Uint8Array(d).slice();
+        }
+        const data = new Uint8Array(chunk.byteLength);
+        chunk.copyTo(data);
+        samples.push({ data: data, ts: chunk.timestamp });
+      },
+      error: function (e) { failure = e; },
+    });
+    enc.configure(cfg);
+    const pcm = buf.getChannelData(0);
+    const STEP = 4800; // 0.1秒ずつ渡す
+    for (let i = 0; i < pcm.length; i += STEP) {
+      if (cancelled) { enc.close(); return null; }
+      if (failure) throw failure;
+      const part = pcm.slice(i, Math.min(pcm.length, i + STEP));
+      const ad = new AudioData({ format: 'f32-planar', sampleRate: cfg.sampleRate, numberOfFrames: part.length, numberOfChannels: 1,
+        timestamp: Math.round(i / cfg.sampleRate * 1e6), data: part });
+      enc.encode(ad);
+      ad.close();
+      if (enc.encodeQueueSize > 20) await wait(1);
+    }
+    try {
+      await withTimeout(enc.flush(), C.MOVIE_STALL_MS);
+    } finally {
+      if (enc.state !== 'closed') enc.close();
+    }
+    if (failure) throw failure;
+    samples.sort(function (a, b) { return a.ts - b.ts; });
+    return { samples: samples, rate: cfg.sampleRate, channels: 1, bitrate: cfg.bitrate, asc: asc || makeAsc(cfg.sampleRate, 1) };
+  }
+
+  // 書き出す音（なければ null）
+  async function mixedAudio(totalSec) {
+    const clips = AP.Vconte.audioClips();
+    if (!clips.length) return null;
+    await AP.Audio.prepare(clips.map(function (c) { return c.src; }));
+    return AP.Audio.mix(clips, totalSec, C.MOVIE_AUDIO_RATE);
+  }
+
   // ---- WebCodecs で書き出す ----
-  async function encodeWebCodecs(cfg, w, h, fps, onProgress) {
+  async function encodeWebCodecs(cfg, w, h, fps, onProgress, audioBuf) {
     AP.Vconte.rebuild();
     const total = AP.Vconte.totalFrames();
     const canvas = document.createElement('canvas');
@@ -144,8 +214,10 @@
     if (failure) throw failure;
     if (!avcC) throw new Error('この端末では映像の設定を取り出せませんでした');
     samples.sort(function (a, b) { return a.ts - b.ts; });
+    const audio = audioBuf ? await encodeAudio(audioBuf) : null;
+    if (cancelled) return null;
     onProgress(1);
-    return AP.Mp4.build({ width: w, height: h, fps: fps, samples: samples, avcC: avcC });
+    return AP.Mp4.build({ width: w, height: h, fps: fps, samples: samples, avcC: avcC, audio: audio });
   }
 
   // ---- 実時間で録画する（VideoEncoder がないとき） ----
@@ -160,17 +232,24 @@
       const ctx = canvas.getContext('2d');
       AP.Vconte.renderFrame(ctx, w, h, 0);
       const stream = canvas.captureStream(fps);
-      const type = ['video/mp4;codecs=avc1', 'video/mp4', 'video/webm;codecs=vp9', 'video/webm']
+      // 音：録画しながらカットの音を鳴らして、音声トラックとして入れる
+      const clips = AP.Vconte.audioClips();
+      const dest = clips.length ? AP.Audio.streamDestination() : null;
+      if (dest) dest.stream.getAudioTracks().forEach(function (t) { stream.addTrack(t); });
+      const type = (dest ? ['video/mp4;codecs=avc1,mp4a.40.2', 'video/mp4', 'video/webm;codecs=vp9,opus', 'video/webm']
+        : ['video/mp4;codecs=avc1', 'video/mp4', 'video/webm;codecs=vp9', 'video/webm'])
         .find(function (t) { return MediaRecorder.isTypeSupported(t); }) || '';
       const rec = new MediaRecorder(stream, type ? { mimeType: type, videoBitsPerSecond: Math.round(w * h * fps * C.MOVIE_BITS_PER_PIXEL) } : {});
       const parts = [];
       rec.ondataavailable = function (e) { if (e.data && e.data.size) parts.push(e.data); };
       rec.onstop = function () {
+        if (dest) AP.Audio.stopClips();
         if (cancelled) return resolve(null);
         resolve(new Blob(parts, { type: rec.mimeType || type || 'video/webm' }));
       };
       rec.start();
       const t0 = performance.now();
+      if (dest) AP.Audio.playClips(clips, 0, dest);
       (function step() {
         if (cancelled) { rec.stop(); return; }
         const f = Math.floor((performance.now() - t0) / 1000 * fps);
@@ -196,12 +275,14 @@
     try {
       setStatus('準備中…');
       await AP.Draw.imagesReady();
-      const cfgs = await findConfigs(sz.w, sz.h, fps);
+      const audioBuf = await mixedAudio(total / fps);
+      // 音があるのに AAC の符号化器がない端末は、音ごと実時間で録画する
+      const cfgs = audioBuf && !(await aacSupported()) ? [] : await findConfigs(sz.w, sz.h, fps);
       let blob, ext = 'mp4', done = false;
       for (let i = 0; i < cfgs.length && !done && !cancelled; i++) {
-        setStatus('書き出し中…（' + sz.w + '×' + sz.h + '）');
+        setStatus('書き出し中…（' + sz.w + '×' + sz.h + (audioBuf ? '・音あり' : '') + '）');
         try {
-          blob = await encodeWebCodecs(cfgs[i], sz.w, sz.h, fps, setProgress);
+          blob = await encodeWebCodecs(cfgs[i], sz.w, sz.h, fps, setProgress, audioBuf);
           done = true;
         } catch (e) {
           if (!e || e.message !== 'stalled') throw e;
@@ -209,7 +290,7 @@
         }
       }
       if (!done && !cancelled) {
-        setStatus('この端末は速い書き出しに対応していないので、再生しながら録画しています（尺と同じ時間がかかります）');
+        setStatus('この端末は速い書き出し' + (audioBuf ? '（音つき）' : '') + 'に対応していないので、再生しながら録画しています（尺と同じ時間がかかります）');
         blob = await recordRealtime(sz.w, sz.h, fps, setProgress);
         if (blob && !/mp4/.test(blob.type)) ext = 'webm';
       }
@@ -273,7 +354,7 @@
     const p = document.createElement('p');
     p.className = 'pdf-note';
     p.textContent = '尺 ' + U.framesToLabel(total, fps) + '（' + total + 'コマ・' + fps + 'fps）。Vコンテの「シーン構成」でオンのシーンを、その順に書き出します。' +
-      'カット番号・テキスト・セリフの重ね表示は、Vコンテの画面のチェックのとおりに入ります。音は入りません。';
+      'カット番号・テキスト・セリフの重ね表示と音は、Vコンテの画面のチェックのとおりに入ります。';
     body.appendChild(p);
     setStatus('');
   }
@@ -325,7 +406,9 @@
       await AP.Draw.imagesReady();
       const cfgs = await findConfigs(sz.w, sz.h, fps);
       if (!cfgs.length) return null;
-      return encodeWebCodecs(cfgs[0], sz.w, sz.h, fps, function () {});
+      AP.Vconte.rebuild();
+      const audioBuf = await mixedAudio(AP.Vconte.totalFrames() / fps);
+      return encodeWebCodecs(cfgs[0], sz.w, sz.h, fps, function () {}, audioBuf);
     },
   };
 })();
