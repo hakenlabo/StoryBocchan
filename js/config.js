@@ -6,7 +6,7 @@ window.AP = window.AP || {};
 
 AP.CONFIG = {
   APP_NAME: 'ストーリー坊ちゃん',     // アプリの名前（画面・保存ファイルの説明に出る）
-  APP_VERSION: '2026103003',          // 版番号（index.html の ?v=・sw.js の VERSION と同じ。tools/bump-version.sh で変える）
+  APP_VERSION: '2026110901',          // 版番号（index.html の ?v=・sw.js の VERSION と同じ。tools/bump-version.sh で変える）
 
   // ---- カードの見た目 ----
   CARD_W: 160,                 // カード幅（ワールド座標px）。高さはサムネ（画面比）＋テキストで決まる
@@ -85,7 +85,12 @@ AP.CONFIG = {
     { name: '太', value: 12 },
   ],
   DRAW_DEFAULT_SIZE_INDEX: 1,
-  ERASER_SIZE: 40,
+  ERASER_SIZES: [              // 消しゴムの大きさ（DRAW_BASE_W に対する太さ）。消しゴムを選ぶと太さボタンがこれに変わる
+    { name: '小', value: 10 },
+    { name: '中', value: 20 },
+    { name: '大', value: 40 },
+  ],
+  ERASER_DEFAULT_SIZE_INDEX: 1,
   DRAW_MIN_PRESSURE_RATIO: 0.25, // 筆圧ゼロのときの太さの割合（1にすると筆圧無視）
   DRAW_NONPEN_PRESSURE: 0.7,     // マウス・指は筆圧がないので、この値で描く
   DRAW_PEN_ONLY_AFTER_PEN: true, // Apple Pencilを一度使ったら、指では描かない（手のひら誤爆対策）

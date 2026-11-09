@@ -189,6 +189,7 @@
   let tool = 'pen';
   let color = C.DRAW_COLORS[0].value;
   let size = C.DRAW_SIZES[C.DRAW_DEFAULT_SIZE_INDEX].value;
+  let eraserSize = C.ERASER_SIZES[C.ERASER_DEFAULT_SIZE_INDEX].value;
   let scale = 1;            // 画面px / 絵の単位
   let cur = null;           // 描いている途中の線
   let sel = null;           // 投げ縄で選んだ線 { idx: [線の番号], box: {x0,y0,x1,y1}（選んだときの範囲）, m: 変換 }
@@ -587,7 +588,18 @@
     redoBtn.disabled = !redoStack.length;
     panel.querySelectorAll('[data-tool]').forEach(function (b) { b.classList.toggle('active', b.dataset.tool === tool); });
     panel.querySelectorAll('[data-color]').forEach(function (b) { b.classList.toggle('active', b.dataset.color === color); });
-    panel.querySelectorAll('[data-size]').forEach(function (b) { b.classList.toggle('active', Number(b.dataset.size) === size); });
+    // 太さボタンは、消しゴムのときは消しゴムの大きさ（小・中・大）になる
+    const erasing = tool === 'eraser';
+    const list = erasing ? C.ERASER_SIZES : C.DRAW_SIZES;
+    const now = erasing ? eraserSize : size;
+    panel.querySelectorAll('[data-size]').forEach(function (b) {
+      const s = list[Number(b.dataset.size)];
+      b.hidden = !s;
+      if (!s) return;
+      b.textContent = s.name;
+      b.title = erasing ? '消しゴムの大きさ' : 'ペンの太さ';
+      b.classList.toggle('active', s.value === now);
+    });
   }
 
   // ---- 入力 ----
@@ -629,7 +641,7 @@
     cur = {
       tool: t,
       color: t === 'eraser' ? null : color,
-      width: t === 'eraser' ? C.ERASER_SIZE : size,
+      width: t === 'eraser' ? eraserSize : size,
       points: [toPoint(e)],
       pointerId: e.pointerId,
     };
@@ -759,15 +771,18 @@
       colors.appendChild(b);
     });
     const sizes = document.getElementById('draw-sizes');
-    C.DRAW_SIZES.forEach(function (s) {
+    const n = Math.max(C.DRAW_SIZES.length, C.ERASER_SIZES.length);
+    for (let i = 0; i < n; i++) {
       const b = document.createElement('button');
       b.type = 'button';
       b.className = 'size';
-      b.dataset.size = s.value;
-      b.textContent = s.name;
-      b.addEventListener('click', function () { size = s.value; setTool('pen'); });
+      b.dataset.size = i;
+      b.addEventListener('click', function () {
+        if (tool === 'eraser') { if (C.ERASER_SIZES[i]) { eraserSize = C.ERASER_SIZES[i].value; updateButtons(); } }
+        else if (C.DRAW_SIZES[i]) { size = C.DRAW_SIZES[i].value; setTool('pen'); }
+      });
       sizes.appendChild(b);
-    });
+    }
     panel.querySelectorAll('[data-tool]').forEach(function (b) {
       b.addEventListener('click', function () { setTool(b.dataset.tool); });
     });
