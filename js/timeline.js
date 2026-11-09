@@ -41,10 +41,168 @@
   }
 
   // ------------------------------------------------------------
+  // 音の帯
+  // ------------------------------------------------------------
+  let sceneClips = [];      // 表示中のシーンの音の鳴る範囲（シーンの頭からの秒）
+  let aDrag = null;         // 音の帯をドラッグ中
+  let playhead = null, previewTimer = 0, previewRaf = 0;
+  const waveAsked = new Set(); // 波形のためにデコードを頼んだ音
+
+  // 1本の帯を作る。波形をまだ描けなければ false
+  function audioBar(cl, lane, fps, ppf, pad) {
+    const bar = document.createElement('div');
+    bar.className = 'tl-audio' + (cl.over ? '' : ' cut');
+    const x0 = pad + cl.start * fps * ppf;
+    const w = Math.max(6, (cl.end - cl.start) * fps * ppf);
+    bar.style.left = x0 + 'px';
+    bar.style.width = w + 'px';
+    bar.style.marginTop = (lane * C.TL_AUDIO_LANE_PX) + 'px';
+    bar.dataset.id = cl.id;
+    bar.title = '🔊 ' + cl.name + '：ドラッグでタイミングを動かす／端をドラッグで頭・お尻を切る／タップで試聴';
+    bar.innerHTML = '<canvas></canvas><span class="tl-aud-name"></span><div class="tl-aud-edge l"></div><div class="tl-aud-edge r"></div>';
+    bar.querySelector('.tl-aud-name').textContent = '🔊 ' + cl.name;
+    track.appendChild(bar);
+    bar.addEventListener('pointerdown', onAudioDown);
+    return drawWave(bar, cl, w);
+  }
+
+  function drawWave(bar, cl, w) {
+    const cv = bar.querySelector('canvas');
+    const dpr = window.devicePixelRatio || 1;
+    const h = 16;
+    const n = Math.max(1, Math.min(2000, Math.round(w / 2)));
+    const p = AP.Audio.peaks(cl.src, cl.from, cl.from + (cl.end - cl.start), n);
+    cv.width = Math.max(1, Math.round(w * dpr));
+    cv.height = Math.round(h * dpr);
+    if (!p) return false;
+    const ctx = cv.getContext('2d');
+    ctx.scale(dpr, dpr);
+    ctx.fillStyle = '#f08c00';
+    const bw = w / n;
+    for (let i = 0; i < n; i++) {
+      const v = Math.max(0.04, p[i]) * (h - 2) / 2;
+      ctx.fillRect(i * bw, h / 2 - v, Math.max(1, bw - 0.5), v * 2);
+    }
+    return true;
+  }
+
+  function onAudioDown(e) {
+    if (aDrag || press) return;
+    e.stopPropagation();
+    e.preventDefault();
+    const bar = e.currentTarget;
+    const card = Store.get(bar.dataset.id);
+    if (!card || !card.audio) return;
+    const r = bar.getBoundingClientRect();
+    const grab = C.TL_AUDIO_EDGE_PX * (e.pointerType === 'mouse' ? 1 : 1.8);
+    const edge = e.clientX - r.left < grab ? 'in' : (r.right - e.clientX < grab ? 'out' : 'move');
+    aDrag = { pointerId: e.pointerId, bar: bar, id: card.id, mode: edge, x0: e.clientX, a0: Object.assign({}, card.audio),
+      left0: bar.offsetLeft, width0: bar.offsetWidth, moved: false, next: null, tip: null };
+    bar.setPointerCapture(e.pointerId);
+    bar.addEventListener('pointermove', onAudioMove);
+    bar.addEventListener('pointerup', onAudioUp);
+    bar.addEventListener('pointercancel', onAudioUp);
+    bar.addEventListener('lostpointercapture', onAudioUp);
+  }
+
+  function onAudioMove(e) {
+    const d = aDrag;
+    if (!d || e.pointerId !== d.pointerId) return;
+    const dx = e.clientX - d.x0;
+    if (!d.moved && Math.abs(dx) < C.DRAG_THRESHOLD_MOUSE_PX) return;
+    d.moved = true;
+    d.bar.classList.add('dragging');
+    const fps = Store.settings().fps;
+    const ppf = pxPerFrame();
+    const a = d.a0;
+    const trimIn = a.trimIn || 0, trimOut = a.trimOut || 0, shift = a.shift || 0;
+    let sec = Math.round(dx / ppf) / fps; // 1コマ刻み
+    const next = Object.assign({}, a);
+    let label;
+    if (d.mode === 'move') {
+      next.shift = round2(shift + sec);
+      d.bar.style.left = (d.left0 + sec * fps * ppf) + 'px';
+      label = 'ずらし ' + signed(next.shift) + '秒';
+    } else if (d.mode === 'in') {
+      sec = U.clamp(sec, -trimIn, a.dur - trimIn - trimOut - C.AUDIO_MIN_LEN_SEC);
+      next.trimIn = round2(trimIn + sec);
+      next.shift = round2(shift + sec);
+      d.bar.style.left = (d.left0 + sec * fps * ppf) + 'px';
+      d.bar.style.width = Math.max(6, d.width0 - sec * fps * ppf) + 'px';
+      label = '頭を ' + next.trimIn.toFixed(2) + '秒 切る';
+    } else {
+      sec = U.clamp(sec, -(a.dur - trimIn - trimOut - C.AUDIO_MIN_LEN_SEC), trimOut);
+      next.trimOut = round2(trimOut - sec);
+      d.bar.style.width = Math.max(6, d.width0 + sec * fps * ppf) + 'px';
+      label = 'お尻を ' + next.trimOut.toFixed(2) + '秒 切る';
+    }
+    d.next = next;
+    if (!d.tip) { d.tip = document.createElement('div'); d.tip.className = 'tl-aud-tip'; track.appendChild(d.tip); }
+    d.tip.textContent = label + '（長さ ' + AP.Audio.playLen(next).toFixed(2) + '秒）';
+    d.tip.style.left = d.bar.style.left;
+    d.tip.style.marginTop = d.bar.style.marginTop;
+  }
+
+  function onAudioUp(e) {
+    const d = aDrag;
+    if (!d || e.pointerId !== d.pointerId) return;
+    aDrag = null;
+    d.bar.removeEventListener('pointermove', onAudioMove);
+    d.bar.removeEventListener('pointerup', onAudioUp);
+    d.bar.removeEventListener('pointercancel', onAudioUp);
+    d.bar.removeEventListener('lostpointercapture', onAudioUp);
+    if (d.tip) d.tip.remove();
+    d.bar.classList.remove('dragging');
+    if (e.type === 'pointercancel') { render(); return; }
+    if (d.moved && d.next) {
+      Store.checkpoint();
+      Store.setAudio(d.id, d.next);   // ここで描き直される
+      Store.checkpoint();
+    } else if (pendingRender) {
+      render();
+    }
+    // 動かしたら（タップでも）その前後を試聴する
+    const cl = sceneClips.find(function (c) { return c.id === d.id; });
+    if (cl) {
+      if (!d.moved && previewTimer) stopPreview();
+      else startPreview(Math.max(0, cl.start - C.AUDIO_PREVIEW_BEFORE_SEC));
+    }
+  }
+
+  function round2(v) { return Math.round(v * 100) / 100; }
+  function signed(v) { return (v > 0 ? '+' : v < 0 ? '−' : '±') + Math.abs(v).toFixed(2); }
+
+  // シーンの at 秒から AUDIO_PREVIEW_SEC だけ鳴らす。赤い線で今の位置を見せる
+  function startPreview(at) {
+    stopPreview();
+    const fps = Store.settings().fps;
+    AP.Audio.prepare(sceneClips.map(function (c) { return c.src; })).then(function () {
+      AP.Audio.playClips(sceneClips, at);
+      if (!playhead) { playhead = document.createElement('div'); playhead.className = 'tl-playhead'; }
+      track.appendChild(playhead);
+      const t0 = performance.now();
+      (function step() {
+        const t = at + (performance.now() - t0) / 1000;
+        playhead.style.left = (C.TL_PADDING_PX + t * fps * pxPerFrame()) + 'px';
+        previewRaf = requestAnimationFrame(step);
+      })();
+      previewTimer = setTimeout(stopPreview, C.AUDIO_PREVIEW_SEC * 1000);
+    });
+  }
+
+  function stopPreview() {
+    clearTimeout(previewTimer);
+    cancelAnimationFrame(previewRaf);
+    previewTimer = 0;
+    AP.Audio.stopClips();
+    if (playhead) { playhead.remove(); playhead = null; }
+  }
+
+  // ------------------------------------------------------------
   // 描画
   // ------------------------------------------------------------
   function render() {
-    if (durEditId || (press && press.mode !== 'press')) { pendingRender = true; return; }
+    if (durEditId || aDrag || (press && press.mode !== 'press')) { pendingRender = true; return; }
     pendingRender = false;
     const fps = Store.settings().fps;
     if (!scene || !Store.isScene(scene)) scene = Store.scenes()[0] || null;
@@ -102,29 +260,33 @@
       }
       gx += g.frames;
     });
-    // 音の帯：鳴る範囲を、カードの下に出す（カットをまたぐのが見えるように）。重なる音は段を分ける
+    // 音の帯：鳴る範囲を、カードの下に波形つきで出す（カットをまたぐのが見えるように）。重なる音は段を分ける。
+    // 帯をドラッグでタイミングを動かす（ずらし）、端をドラッグで頭・お尻を切る。タップで前後を試聴
     const lanes = [];
-    let gs = 0;
+    sceneClips = [];
+    let gs = 0, missing = false;
     groups.forEach(function (g) {
       let s = gs;
       g.cards.forEach(function (c) {
         const cl = AP.Audio.clip(Store.source(c), s, gs + g.frames, fps);
         s += c.duration;
         if (!cl) return;
+        sceneClips.push(cl);
         let lane = lanes.findIndex(function (endSec) { return endSec <= cl.start; });
         if (lane < 0) { lane = lanes.length; lanes.push(0); }
         lanes[lane] = cl.end;
-        const bar = document.createElement('div');
-        bar.className = 'tl-audio' + (cl.over ? '' : ' cut');
-        const x0 = pad + Math.max(-pad, cl.start * fps * ppf);
-        bar.style.left = x0 + 'px';
-        bar.style.width = Math.max(4, pad + cl.end * fps * ppf - x0) + 'px';
-        bar.style.marginTop = (lane * 7) + 'px';
-        bar.title = '🔊 ' + cl.name + '（' + cl.start.toFixed(1) + '〜' + cl.end.toFixed(1) + '秒）';
-        track.appendChild(bar);
+        if (!audioBar(cl, lane, fps, ppf, pad)) missing = true;
       });
       gs += g.frames;
     });
+    document.getElementById('timeline').style.setProperty('--tl-audio-h', (lanes.length ? lanes.length * C.TL_AUDIO_LANE_PX + 4 : 0) + 'px');
+    if (missing) {
+      // 波形はデコードが済んでから描く（デコードできない音で描き直しが続かないよう、1つの音につき1回だけ）
+      const todo = sceneClips.map(function (c) { return c.src; }).filter(function (src) { return !waveAsked.has(src); });
+      todo.forEach(function (src) { waveAsked.add(src); });
+      if (todo.length) AP.Audio.prepare(todo).then(function () { render(); });
+    }
+    if (playhead) track.appendChild(playhead);
     const audioEnd = lanes.length ? Math.max.apply(null, lanes) : 0;
     if (pad * 2 + audioEnd * fps * ppf + 40 > width) track.style.width = (pad * 2 + audioEnd * fps * ppf + 40) + 'px';
     const noOf = new Map();

@@ -6,7 +6,7 @@ window.AP = window.AP || {};
 
 AP.CONFIG = {
   APP_NAME: 'ストーリー坊ちゃん',     // アプリの名前（画面・保存ファイルの説明に出る）
-  APP_VERSION: '2026110904',          // 版番号（index.html の ?v=・sw.js の VERSION と同じ。tools/bump-version.sh で変える）
+  APP_VERSION: '2026110905',          // 版番号（index.html の ?v=・sw.js の VERSION と同じ。tools/bump-version.sh で変える）
 
   // ---- カードの見た目 ----
   CARD_W: 160,                 // カード幅（ワールド座標px）。高さはサムネ（画面比）＋テキストで決まる
@@ -136,6 +136,11 @@ AP.CONFIG = {
   AUDIO_MAX_SEC: 180,          // 読み込める音の長さの上限（秒）。BGM をシーンの頭のカットに付けて流すこともあるので長め
   AUDIO_REC_MAX_SEC: 60,       // 録音はこの秒数で自動で止まる
   AUDIO_SHIFT_STEP: 0.1,       // 「ずらす」の刻み（秒）
+  TL_AUDIO_LANE_PX: 22,        // タイムラインの音の帯の1段の高さ（波形が見える太さ）
+  TL_AUDIO_EDGE_PX: 8,         // 音の帯の端からこの距離をつかむと、頭・お尻を切る（指は1.8倍）
+  AUDIO_MIN_LEN_SEC: 0.1,      // 切っても最低この長さは残す
+  AUDIO_PREVIEW_BEFORE_SEC: 1, // 音の帯を動かしたら（タップしたら）、音の頭のこの秒数前から試聴する
+  AUDIO_PREVIEW_SEC: 4,        // 試聴の長さ（秒）
   AUDIO_MAX_BYTES: 4000000,    // 1カットの音のファイルの大きさの上限（作品データを重くしすぎないため）
   AUDIO_WAV_RATE: 32000,       // そのままでは鳴らない形式（Chrome の録音など）を WAV にするときのサンプリング周波数
 

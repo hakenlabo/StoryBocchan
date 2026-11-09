@@ -3,6 +3,7 @@
  * card.audio = { src: data URL, name, dur（秒）, over, shift }。セリフと同じく元のカードが持つ（連動カットは共通）。
  *   over：鳴り終わるまで鳴らす（次のカットにかかってもよい）。false ならカット（同じカットにまとめた絵ならまとまり）の終わりで止める。既定は true
  *   shift：カットの頭から何秒ずらして鳴らし始めるか。マイナスなら前のカットのうちから先に鳴る（音の先行）
+ *   trimIn／trimOut：音の頭・お尻を何秒切るか（タイムラインの音の帯の端をドラッグ）
  * 描画パネルの下の「音」欄で録音・読み込み・試し聞き・外す。Vコンテの再生で鳴らす（Web Audio。重なった音はそのまま混ざる）。
  * タイムラインには、音が実際に鳴る範囲を帯で出す（カットをまたぐのが見える）。
  * どの端末でも鳴るように、mp3・m4a・wav 以外（Chrome の録音の webm など）は WAV に変換して持つ。
@@ -99,9 +100,38 @@
     const a = card && card.audio;
     if (!a) return null;
     const start = cutStart / fps + (a.shift || 0);
-    const end = a.over === false ? Math.min(start + a.dur, cutEnd / fps) : start + a.dur;
+    const len = playLen(a);
+    const end = a.over === false ? Math.min(start + len, cutEnd / fps) : start + len;
     if (end <= start) return null;
-    return { src: a.src, start: start, end: end, name: a.name, over: a.over !== false };
+    return { id: card.id, src: a.src, start: start, end: end, from: a.trimIn || 0, name: a.name, over: a.over !== false };
+  }
+
+  // 頭・お尻を切ったあとの長さ（秒）
+  function playLen(a) { return Math.max(0, a.dur - (a.trimIn || 0) - (a.trimOut || 0)); }
+
+  // 波形：音の from〜to 秒を n 個に分けた、それぞれの大きさ（0〜1）。まだデコードしていなければ null
+  const peakCache = new Map();
+  function peaks(src, from, to, n) {
+    const buf = buffers.get(src);
+    if (!buf) return null;
+    const key = src.length + ':' + src.slice(-40) + ':' + from + ':' + to + ':' + n;
+    if (peakCache.has(key)) return peakCache.get(key);
+    const d = buf.getChannelData(0);
+    const i0 = Math.floor(from * buf.sampleRate), i1 = Math.min(d.length, Math.floor(to * buf.sampleRate));
+    const per = Math.max(1, Math.floor((i1 - i0) / n));
+    const out = new Float32Array(n);
+    let max = 0;
+    for (let k = 0; k < n; k++) {
+      let m = 0;
+      const a = i0 + k * per, b = Math.min(i1, a + per);
+      for (let i = a; i < b; i += 8) { const v = Math.abs(d[i]); if (v > m) m = v; }
+      out[k] = m;
+      if (m > max) max = m;
+    }
+    if (max > 0) for (let k = 0; k < n; k++) out[k] /= max;
+    if (peakCache.size > 200) peakCache.clear();
+    peakCache.set(key, out);
+    return out;
   }
 
   function setOpt(patch) {
@@ -146,10 +176,10 @@
     if (rec) {
       info.textContent = '録音中… ' + secLabel((performance.now() - rec.t0) / 1000);
     } else if (a) {
-      info.textContent = a.name + '（' + secLabel(a.dur) + '）';
+      info.textContent = a.name + '（' + secLabel(playLen(a)) + ((a.trimIn || a.trimOut) ? '・切ってあります' : '') + '）';
       const own = Store.get(AP.Draw.openCardId() || cardId);
       const left = own ? own.duration / fps - (a.shift || 0) : 0; // カットの中で鳴れる長さ
-      if (own && a.dur > left + 0.001) {
+      if (own && playLen(a) > left + 0.001) {
         info.textContent += a.over !== false ? '　→ 次のカットにかかります' : '　→ カットの終わりで切れます';
         fitBtn.hidden = false;
       }
@@ -226,8 +256,11 @@
     if (preview) return stopPreview();
     const c = card();
     if (!c || !c.audio) return;
-    preview = new Audio(c.audio.src);
+    const a = c.audio;
+    preview = new Audio(a.src);
     preview.onended = stopPreview;
+    preview.currentTime = a.trimIn || 0;
+    preview.ontimeupdate = function () { if (preview && preview.currentTime >= a.dur - (a.trimOut || 0)) stopPreview(); };
     preview.play().catch(function () { stopPreview(); U.toast('再生できませんでした'); });
     render();
   }
@@ -248,7 +281,7 @@
     const c = card();
     if (!c || !c.audio) return;
     const id = AP.Draw.openCardId() || cardId;
-    Store.setDuration(id, Math.max(C.MIN_DURATION_FRAMES, Math.ceil((c.audio.dur + (c.audio.shift || 0)) * Store.settings().fps)));
+    Store.setDuration(id, Math.max(C.MIN_DURATION_FRAMES, Math.ceil((playLen(c.audio) + (c.audio.shift || 0)) * Store.settings().fps)));
     U.toast('尺を音の長さに合わせました');
   }
 
@@ -276,7 +309,7 @@
     clips.forEach(function (cl) {
       const buf = buffers.get(cl.src);
       if (!buf || cl.end <= at) return;
-      const offset = Math.max(0, at - cl.start);
+      const offset = (cl.from || 0) + Math.max(0, at - cl.start);
       if (offset >= buf.duration) return;
       const node = ac.createBufferSource();
       node.buffer = buf;
@@ -306,7 +339,7 @@
       const node = oc.createBufferSource();
       node.buffer = buf;
       node.connect(oc.destination);
-      const offset = Math.max(0, -cl.start);
+      const offset = (cl.from || 0) + Math.max(0, -cl.start);
       if (offset >= buf.duration) return;
       node.start(Math.max(0, cl.start), offset);
       node.stop(Math.min(totalSec, cl.end));
@@ -353,6 +386,8 @@
     close: function () { stopRecording(true); stopPreview(); cardId = null; },
     importFile: importFile,
     clip: clip,
+    playLen: playLen,
+    peaks: peaks,
     prepare: prepare,
     playClips: playClips,
     mix: mix,
