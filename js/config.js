@@ -6,7 +6,7 @@ window.AP = window.AP || {};
 
 AP.CONFIG = {
   APP_NAME: 'ストーリー坊ちゃん',     // アプリの名前（画面・保存ファイルの説明に出る）
-  APP_VERSION: '2026110905',          // 版番号（index.html の ?v=・sw.js の VERSION と同じ。tools/bump-version.sh で変える）
+  APP_VERSION: '2026110906',          // 版番号（index.html の ?v=・sw.js の VERSION と同じ。tools/bump-version.sh で変える）
 
   // ---- カードの見た目 ----
   CARD_W: 160,                 // カード幅（ワールド座標px）。高さはサムネ（画面比）＋テキストで決まる
@@ -141,6 +141,7 @@ AP.CONFIG = {
   AUDIO_MIN_LEN_SEC: 0.1,      // 切っても最低この長さは残す
   AUDIO_PREVIEW_BEFORE_SEC: 1, // 音の帯を動かしたら（タップしたら）、音の頭のこの秒数前から試聴する
   AUDIO_PREVIEW_SEC: 4,        // 試聴の長さ（秒）
+  VC_DUB_PREROLL_SEC: 1,       // Vコンテのアフレコ：カットの頭のこの秒数前から再生して録る（入りのタイミングをつかむため）
   AUDIO_MAX_BYTES: 4000000,    // 1カットの音のファイルの大きさの上限（作品データを重くしすぎないため）
   AUDIO_WAV_RATE: 32000,       // そのままでは鳴らない形式（Chrome の録音など）を WAV にするときのサンプリング周波数
 

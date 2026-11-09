@@ -44,133 +44,39 @@
   // 音の帯
   // ------------------------------------------------------------
   let sceneClips = [];      // 表示中のシーンの音の鳴る範囲（シーンの頭からの秒）
-  let aDrag = null;         // 音の帯をドラッグ中
+  let aDrag = false;        // 音の帯をドラッグ中
   let playhead = null, previewTimer = 0, previewRaf = 0;
   const waveAsked = new Set(); // 波形のためにデコードを頼んだ音
 
-  // 1本の帯を作る。波形をまだ描けなければ false
+  // 1本の帯を作る（ドラッグ・端で切る・タップは AP.Audio.makeStrip）。波形をまだ描けなければ false
   function audioBar(cl, lane, fps, ppf, pad) {
-    const bar = document.createElement('div');
-    bar.className = 'tl-audio' + (cl.over ? '' : ' cut');
-    const x0 = pad + cl.start * fps * ppf;
     const w = Math.max(6, (cl.end - cl.start) * fps * ppf);
-    bar.style.left = x0 + 'px';
-    bar.style.width = w + 'px';
-    bar.style.marginTop = (lane * C.TL_AUDIO_LANE_PX) + 'px';
-    bar.dataset.id = cl.id;
-    bar.title = '🔊 ' + cl.name + '：ドラッグでタイミングを動かす／端をドラッグで頭・お尻を切る／タップで試聴';
-    bar.innerHTML = '<canvas></canvas><span class="tl-aud-name"></span><div class="tl-aud-edge l"></div><div class="tl-aud-edge r"></div>';
-    bar.querySelector('.tl-aud-name').textContent = '🔊 ' + cl.name;
-    track.appendChild(bar);
-    bar.addEventListener('pointerdown', onAudioDown);
-    return drawWave(bar, cl, w);
+    const st = AP.Audio.makeStrip(cl, {
+      container: track,
+      left: (pad + cl.start * fps * ppf) + 'px',
+      width: w + 'px',
+      widthPx: w,
+      lane: lane,
+      pxPerSec: function () { return fps * pxPerFrame(); },
+      fps: fps,
+      onStart: function () { aDrag = true; },
+      onEnd: function (next, moved) {
+        aDrag = false;
+        if (next) {
+          Store.checkpoint();
+          Store.setAudio(cl.id, next);   // ここで描き直される
+          Store.checkpoint();
+        } else if (pendingRender) {
+          render();
+        }
+        // 動かしたら（タップでも）その前後を試聴する。鳴っている時のタップは止める
+        const c2 = sceneClips.find(function (c) { return c.id === cl.id; });
+        if (!moved && previewTimer) stopPreview();
+        else if (c2) startPreview(Math.max(0, c2.start - C.AUDIO_PREVIEW_BEFORE_SEC));
+      },
+    });
+    return st.drawn;
   }
-
-  function drawWave(bar, cl, w) {
-    const cv = bar.querySelector('canvas');
-    const dpr = window.devicePixelRatio || 1;
-    const h = 16;
-    const n = Math.max(1, Math.min(2000, Math.round(w / 2)));
-    const p = AP.Audio.peaks(cl.src, cl.from, cl.from + (cl.end - cl.start), n);
-    cv.width = Math.max(1, Math.round(w * dpr));
-    cv.height = Math.round(h * dpr);
-    if (!p) return false;
-    const ctx = cv.getContext('2d');
-    ctx.scale(dpr, dpr);
-    ctx.fillStyle = '#f08c00';
-    const bw = w / n;
-    for (let i = 0; i < n; i++) {
-      const v = Math.max(0.04, p[i]) * (h - 2) / 2;
-      ctx.fillRect(i * bw, h / 2 - v, Math.max(1, bw - 0.5), v * 2);
-    }
-    return true;
-  }
-
-  function onAudioDown(e) {
-    if (aDrag || press) return;
-    e.stopPropagation();
-    e.preventDefault();
-    const bar = e.currentTarget;
-    const card = Store.get(bar.dataset.id);
-    if (!card || !card.audio) return;
-    const r = bar.getBoundingClientRect();
-    const grab = C.TL_AUDIO_EDGE_PX * (e.pointerType === 'mouse' ? 1 : 1.8);
-    const edge = e.clientX - r.left < grab ? 'in' : (r.right - e.clientX < grab ? 'out' : 'move');
-    aDrag = { pointerId: e.pointerId, bar: bar, id: card.id, mode: edge, x0: e.clientX, a0: Object.assign({}, card.audio),
-      left0: bar.offsetLeft, width0: bar.offsetWidth, moved: false, next: null, tip: null };
-    bar.setPointerCapture(e.pointerId);
-    bar.addEventListener('pointermove', onAudioMove);
-    bar.addEventListener('pointerup', onAudioUp);
-    bar.addEventListener('pointercancel', onAudioUp);
-    bar.addEventListener('lostpointercapture', onAudioUp);
-  }
-
-  function onAudioMove(e) {
-    const d = aDrag;
-    if (!d || e.pointerId !== d.pointerId) return;
-    const dx = e.clientX - d.x0;
-    if (!d.moved && Math.abs(dx) < C.DRAG_THRESHOLD_MOUSE_PX) return;
-    d.moved = true;
-    d.bar.classList.add('dragging');
-    const fps = Store.settings().fps;
-    const ppf = pxPerFrame();
-    const a = d.a0;
-    const trimIn = a.trimIn || 0, trimOut = a.trimOut || 0, shift = a.shift || 0;
-    let sec = Math.round(dx / ppf) / fps; // 1コマ刻み
-    const next = Object.assign({}, a);
-    let label;
-    if (d.mode === 'move') {
-      next.shift = round2(shift + sec);
-      d.bar.style.left = (d.left0 + sec * fps * ppf) + 'px';
-      label = 'ずらし ' + signed(next.shift) + '秒';
-    } else if (d.mode === 'in') {
-      sec = U.clamp(sec, -trimIn, a.dur - trimIn - trimOut - C.AUDIO_MIN_LEN_SEC);
-      next.trimIn = round2(trimIn + sec);
-      next.shift = round2(shift + sec);
-      d.bar.style.left = (d.left0 + sec * fps * ppf) + 'px';
-      d.bar.style.width = Math.max(6, d.width0 - sec * fps * ppf) + 'px';
-      label = '頭を ' + next.trimIn.toFixed(2) + '秒 切る';
-    } else {
-      sec = U.clamp(sec, -(a.dur - trimIn - trimOut - C.AUDIO_MIN_LEN_SEC), trimOut);
-      next.trimOut = round2(trimOut - sec);
-      d.bar.style.width = Math.max(6, d.width0 + sec * fps * ppf) + 'px';
-      label = 'お尻を ' + next.trimOut.toFixed(2) + '秒 切る';
-    }
-    d.next = next;
-    if (!d.tip) { d.tip = document.createElement('div'); d.tip.className = 'tl-aud-tip'; track.appendChild(d.tip); }
-    d.tip.textContent = label + '（長さ ' + AP.Audio.playLen(next).toFixed(2) + '秒）';
-    d.tip.style.left = d.bar.style.left;
-    d.tip.style.marginTop = d.bar.style.marginTop;
-  }
-
-  function onAudioUp(e) {
-    const d = aDrag;
-    if (!d || e.pointerId !== d.pointerId) return;
-    aDrag = null;
-    d.bar.removeEventListener('pointermove', onAudioMove);
-    d.bar.removeEventListener('pointerup', onAudioUp);
-    d.bar.removeEventListener('pointercancel', onAudioUp);
-    d.bar.removeEventListener('lostpointercapture', onAudioUp);
-    if (d.tip) d.tip.remove();
-    d.bar.classList.remove('dragging');
-    if (e.type === 'pointercancel') { render(); return; }
-    if (d.moved && d.next) {
-      Store.checkpoint();
-      Store.setAudio(d.id, d.next);   // ここで描き直される
-      Store.checkpoint();
-    } else if (pendingRender) {
-      render();
-    }
-    // 動かしたら（タップでも）その前後を試聴する
-    const cl = sceneClips.find(function (c) { return c.id === d.id; });
-    if (cl) {
-      if (!d.moved && previewTimer) stopPreview();
-      else startPreview(Math.max(0, cl.start - C.AUDIO_PREVIEW_BEFORE_SEC));
-    }
-  }
-
-  function round2(v) { return Math.round(v * 100) / 100; }
-  function signed(v) { return (v > 0 ? '+' : v < 0 ? '−' : '±') + Math.abs(v).toFixed(2); }
 
   // シーンの at 秒から AUDIO_PREVIEW_SEC だけ鳴らす。赤い線で今の位置を見せる
   function startPreview(at) {

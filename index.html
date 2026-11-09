@@ -44,7 +44,7 @@
     var m = document.createElement('link'); m.rel = 'manifest'; m.href = 'manifest.webmanifest'; document.head.appendChild(m);
   }
   </script>
-  <link rel="stylesheet" href="css/app.css?v=2026110905">
+  <link rel="stylesheet" href="css/app.css?v=2026110906">
 </head>
 <body data-view="map">
   <header class="app-header">
@@ -177,6 +177,7 @@
         <div id="vc-segs" class="vc-segs"></div>
         <div id="vc-playhead" class="vc-playhead"></div>
       </div>
+      <div id="vc-audio" class="vc-audio" title="カットの音：ドラッグでタイミングを動かす／端をドラッグで頭・お尻を切る／タップで試聴"></div>
       <div class="vc-controls">
         <button id="vc-start" type="button" title="頭へ（Home）">⏮</button>
         <button id="vc-prev" type="button" title="前のカット（Shift+←）">◀◀</button>
@@ -194,6 +195,8 @@
         <label class="vc-opt"><input id="vc-show-text" type="checkbox"> テキスト</label>
         <label class="vc-opt"><input id="vc-show-note" type="checkbox"> セリフ</label>
         <label class="vc-opt" title="カットの音（描画パネルで録音・読み込み）を鳴らす"><input id="vc-sound" type="checkbox"> 音</label>
+        <button id="vc-dub" type="button" class="vc-dub" title="アフレコ：このカットの少し前から再生しながら録音する（もう一度押すと止める）。このカットの音になります">🎙 アフレコ</button>
+        <button id="vc-audio-file" type="button" title="このカットに音のファイル（mp3・m4a・wav など）を読み込む">🎵 音</button>
         <button id="vc-add" type="button" title="いま表示しているカットの後ろに新しいカットを足す">＋ カット</button>
         <button id="vc-camera" type="button" title="いま表示しているカットのカメラワーク">🎥 カメラ</button>
         <button id="vc-draw" type="button" title="いま表示しているカットを描画パネルで開く">✎ このカットを描く</button>
@@ -259,25 +262,25 @@
 
   <!-- 読み込み順に意味があります（ES Modulesは使わない方針）。
        ?v= は版番号：公開版を更新したら全部を新しい番号にする（古いファイルがブラウザに残らないように） -->
-  <script src="js/config.js?v=2026110905"></script>
-  <script src="js/util.js?v=2026110905"></script>
-  <script src="js/model.js?v=2026110905"></script>
-  <script src="js/storage.js?v=2026110905"></script>
-  <script src="js/map.js?v=2026110905"></script>
-  <script src="js/tray.js?v=2026110905"></script>
-  <script src="js/timeline.js?v=2026110905"></script>
-  <script src="js/draw.js?v=2026110905"></script>
-  <script src="js/camera.js?v=2026110905"></script>
-  <script src="js/vconte.js?v=2026110905"></script>
-  <script src="js/clipboard.js?v=2026110905"></script>
-  <script src="js/outline.js?v=2026110905"></script>
-  <script src="js/zip.js?v=2026110905"></script>
-  <script src="js/project.js?v=2026110905"></script>
-  <script src="js/pdf.js?v=2026110905"></script>
-  <script src="js/mp4.js?v=2026110905"></script>
-  <script src="js/movie.js?v=2026110905"></script>
-  <script src="js/images.js?v=2026110905"></script>
-  <script src="js/audio.js?v=2026110905"></script>
-  <script src="js/app.js?v=2026110905"></script>
+  <script src="js/config.js?v=2026110906"></script>
+  <script src="js/util.js?v=2026110906"></script>
+  <script src="js/model.js?v=2026110906"></script>
+  <script src="js/storage.js?v=2026110906"></script>
+  <script src="js/map.js?v=2026110906"></script>
+  <script src="js/tray.js?v=2026110906"></script>
+  <script src="js/timeline.js?v=2026110906"></script>
+  <script src="js/draw.js?v=2026110906"></script>
+  <script src="js/camera.js?v=2026110906"></script>
+  <script src="js/vconte.js?v=2026110906"></script>
+  <script src="js/clipboard.js?v=2026110906"></script>
+  <script src="js/outline.js?v=2026110906"></script>
+  <script src="js/zip.js?v=2026110906"></script>
+  <script src="js/project.js?v=2026110906"></script>
+  <script src="js/pdf.js?v=2026110906"></script>
+  <script src="js/mp4.js?v=2026110906"></script>
+  <script src="js/movie.js?v=2026110906"></script>
+  <script src="js/images.js?v=2026110906"></script>
+  <script src="js/audio.js?v=2026110906"></script>
+  <script src="js/app.js?v=2026110906"></script>
 </body>
 </html>

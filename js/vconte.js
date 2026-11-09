@@ -192,6 +192,115 @@
       if (col) s.style.boxShadow = 'inset 0 -5px 0 ' + col.line;
       segsEl.appendChild(s);
     });
+    buildAudio();
+  }
+
+  // ---- 音の帯（バーの下）：タイムラインと同じ操作（AP.Audio.makeStrip）。動かしたら少し前から再生して確かめる ----
+  let vDrag = false;
+  let lanesShown = -1;
+  let previewTimer = 0;
+  const waveAsked = new Set();
+
+  function buildAudio() {
+    const box = document.getElementById('vc-audio');
+    box.innerHTML = '';
+    const fps = Store.settings().fps;
+    const totalSec = total / fps;
+    const clips = total ? audioClips() : [];
+    const lanes = [];
+    const W = box.clientWidth || bar.clientWidth;
+    let missing = false;
+    clips.forEach(function (cl) {
+      let lane = lanes.findIndex(function (endSec) { return endSec <= cl.start; });
+      if (lane < 0) { lane = lanes.length; lanes.push(0); }
+      lanes[lane] = cl.end;
+      const w = (cl.end - cl.start) / totalSec * W;
+      const st = AP.Audio.makeStrip(cl, {
+        container: box,
+        left: (cl.start / totalSec * 100) + '%',
+        width: (cl.end - cl.start) / totalSec * 100 + '%',
+        widthPx: w,
+        lane: lane,
+        pxPerSec: function () { return (box.clientWidth || W) / (total / Store.settings().fps); },
+        fps: fps,
+        onStart: function () { vDrag = true; },
+        onEnd: function (next, moved) {
+          vDrag = false;
+          if (next) {
+            Store.checkpoint();
+            Store.setAudio(cl.id, next);  // ここで作り直される
+            Store.checkpoint();
+          }
+          if (!moved && playing) { pause(); return; }
+          const c2 = audioClips().find(function (c) { return c.id === cl.id; }) || cl;
+          previewFrom(c2.start - C.AUDIO_PREVIEW_BEFORE_SEC);
+        },
+      });
+      if (!st.drawn) missing = true;
+    });
+    if (lanes.length !== lanesShown) {
+      lanesShown = lanes.length;
+      box.style.setProperty('--vc-audio-h', (lanes.length ? lanes.length * C.TL_AUDIO_LANE_PX : 0) + 'px');
+      layout();
+    }
+    if (missing) {
+      const todo = clips.map(function (c) { return c.src; }).filter(function (s) { return !waveAsked.has(s); });
+      todo.forEach(function (s) { waveAsked.add(s); });
+      if (todo.length) AP.Audio.prepare(todo).then(function () { if (isVisible() && !vDrag) buildAudio(); });
+    }
+  }
+
+  // at 秒の少し前から AUDIO_PREVIEW_SEC だけ再生する（絵と音で確かめる）
+  function previewFrom(at) {
+    if (!total) return;
+    const fps = Store.settings().fps;
+    pause();
+    seek(Math.max(0, Math.round(at * fps)));
+    play();
+    clearTimeout(previewTimer);
+    previewTimer = setTimeout(function () { previewTimer = 0; if (playing) pause(); }, C.AUDIO_PREVIEW_SEC * 1000);
+  }
+
+  // ---- アフレコ：いまのカットの少し前から再生しながら録音し、そのカットの音にする ----
+  let dub = null;   // { cardId, startFrame, cutStart }
+
+  function toggleDub() {
+    if (dub) { AP.Audio.stopRecording(false); return; }
+    if (AP.Audio.isRecording() || !total) return;
+    const i = cutIndexAt(frame);
+    if (i < 0) return;
+    const cut = cuts[i];
+    const fps = Store.settings().fps;
+    // 同じカットにまとめた絵なら、まとまりの頭から
+    const cutStart = cut.start - (cut.cutOffset || 0);
+    const target = Store.source(cuts.find(function (c) { return c.start === cutStart; }) ? cuts.find(function (c) { return c.start === cutStart; }).card : cut.card);
+    pause();
+    const startFrame = Math.max(0, cutStart - Math.round(C.VC_DUB_PREROLL_SEC * fps));
+    seek(startFrame);
+    dub = { cardId: target.id, startFrame: startFrame, cutStart: cutStart, recording: false };
+    const btn = document.getElementById('vc-dub');
+    btn.classList.add('recording');
+    btn.textContent = '■ 止める';
+    AP.Audio.startRecording(target.id, {
+      onStart: function () {
+        if (!dub) return;
+        dub.recording = true;
+        seek(dub.startFrame);
+        play();     // 録音中はほかの音を鳴らさない（マイクに入らないように）
+      },
+      // 録音の頭＝再生を始めたコマ。カットの頭より前（予備の時間）から鳴るように、ずらしをマイナスに
+      patch: function () { return { shift: Math.round((startFrame - cutStart) / fps * 100) / 100 }; },
+      onStop: function () { endDub(); },
+    }).then(function () { if (dub && !AP.Audio.isRecording()) endDub(); }); // マイクが使えなかった
+  }
+
+  function endDub() {
+    if (!dub) return;
+    dub = null;
+    const btn = document.getElementById('vc-dub');
+    btn.classList.remove('recording');
+    btn.textContent = '🎙 アフレコ';
+    if (playing) pause();
   }
 
   function draw() {
@@ -226,7 +335,7 @@
 
   function startSound() {
     AP.Audio.stopClips();
-    if (!playing || !soundOn()) return;
+    if (!playing || !soundOn() || dub) return;
     const clips = audioClips();
     if (!clips.length) return;
     const at = frame / Store.settings().fps;
@@ -242,7 +351,7 @@
     const fps = Store.settings().fps;
     let f = startFrame + Math.floor((now - startT) / 1000 * fps);
     if (f >= total) {
-      if (loop && total) {
+      if (loop && total && !dub) {
         startFrame = 0;
         startT = now;
         f = 0;
@@ -273,6 +382,7 @@
   function pause() {
     playing = false;
     AP.Audio.stopClips();
+    if (dub && dub.recording) AP.Audio.stopRecording(false); // 一時停止・最後まで行ったらアフレコも止める
     cancelAnimationFrame(raf);
     draw();
   }
@@ -458,7 +568,12 @@
     document.getElementById('vc-dur-minus').addEventListener('click', function (e) { nudgeDuration(-1, e.shiftKey); });
     document.getElementById('vc-dur-plus').addEventListener('click', function (e) { nudgeDuration(1, e.shiftKey); });
 
-    playBtn.addEventListener('click', function () { playing ? pause() : play(); });
+    playBtn.addEventListener('click', function () { clearTimeout(previewTimer); playing ? pause() : play(); });
+    document.getElementById('vc-dub').addEventListener('click', toggleDub);
+    document.getElementById('vc-audio-file').addEventListener('click', function () {
+      const i = cutIndexAt(frame);
+      if (i >= 0) { pause(); AP.Audio.pickFile(Store.source(cuts[i].card).id); }
+    });
     document.getElementById('vc-start').addEventListener('click', function () { seek(0); });
     document.getElementById('vc-prev').addEventListener('click', function () { seekCut(-1); });
     document.getElementById('vc-next').addEventListener('click', function () { seekCut(1); });
@@ -561,7 +676,7 @@
 
     window.addEventListener('resize', layout);
     Store.subscribe(function (reason) {
-      if (!isVisible() || reason === 'move') return;
+      if (!isVisible() || reason === 'move' || vDrag) return;
       rebuild();
       buildBar();
       renderSequence();

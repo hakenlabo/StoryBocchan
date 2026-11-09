@@ -188,7 +188,11 @@
     }
   }
 
-  async function startRecording() {
+  // target：音を付けるカード（元のカード）。hooks（Vコンテのアフレコ用）：
+  //   onStart()：録音が実際に始まった瞬間、patch(audio)：保存の前に足すもの（ずらしなど）、onStop()：止まったとき
+  async function startRecording(target, hooks) {
+    hooks = hooks || {};
+    if (rec) return;
     if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia || !window.MediaRecorder) {
       return U.toast('この端末・ブラウザでは録音できません');
     }
@@ -202,7 +206,7 @@
       return MediaRecorder.isTypeSupported && MediaRecorder.isTypeSupported(t);
     });
     const mr = type ? new MediaRecorder(stream, { mimeType: type }) : new MediaRecorder(stream);
-    const r = { mr: mr, stream: stream, chunks: [], t0: performance.now(), cancel: false, target: cardId };
+    const r = { mr: mr, stream: stream, chunks: [], t0: performance.now(), cancel: false, target: target || cardId, hooks: hooks };
     rec = r;
     mr.ondataavailable = function (e) { if (e.data && e.data.size) r.chunks.push(e.data); };
     mr.onstop = async function () {
@@ -210,12 +214,16 @@
       clearInterval(r.timer);
       if (rec === r) rec = null;
       render();
+      if (hooks.onStop) hooks.onStop();
       if (r.cancel || !r.chunks.length) return;
       try {
         const blob = new Blob(r.chunks, { type: (mr.mimeType || type || 'audio/webm').split(';')[0] });
         const audio = await makeAudio(blob, '録音');
+        if (hooks.patch) Object.assign(audio, hooks.patch(audio));
+        const had = !!(Store.get(r.target) && Store.get(r.target).audio);
+        Store.checkpoint();
         Store.setAudio(r.target, audio);
-        U.toast('録音しました（' + secLabel(audio.dur) + '）');
+        U.toast('録音しました（' + secLabel(audio.dur) + '）' + (had ? '。前の音は ⌘Z で戻せます' : ''));
       } catch (e) {
         U.toast('録音を保存できませんでした：' + e.message);
       }
@@ -224,6 +232,7 @@
       if ((performance.now() - r.t0) / 1000 >= C.AUDIO_REC_MAX_SEC) stopRecording(false);
       else render();
     }, 200);
+    mr.onstart = function () { r.t0 = performance.now(); if (hooks.onStart) hooks.onStart(); };
     mr.start();
     render();
   }
@@ -234,11 +243,12 @@
     try { rec.mr.stop(); } catch (e) { /* 止まっている */ }
   }
 
-  function pickFile() {
+  function pickFile(target) {
+    const id = typeof target === 'string' ? target : cardId;
     const input = document.createElement('input');
     input.type = 'file';
     input.accept = 'audio/*,.mp3,.m4a,.wav,.aac';
-    input.addEventListener('change', function () { if (input.files[0]) importFile(input.files[0], cardId); });
+    input.addEventListener('change', function () { if (input.files[0]) importFile(input.files[0], id); });
     input.click();
   }
 
@@ -284,6 +294,111 @@
     Store.setDuration(id, Math.max(C.MIN_DURATION_FRAMES, Math.ceil((playLen(c.audio) + (c.audio.shift || 0)) * Store.settings().fps)));
     U.toast('尺を音の長さに合わせました');
   }
+
+  // ---- 音の帯（タイムラインと Vコンテで共通）：波形つき。ドラッグ＝ずらす、端＝頭・お尻を切る、タップ ----
+  // opts: { container, left, width（CSSの値）, widthPx, lane, pxPerSec(), fps, onStart(), onEnd(next|null, moved) }
+  // onEnd の next は動かしたあとの card.audio（動かさなかったら null）。保存は呼んだ側でする
+  function makeStrip(cl, opts) {
+    const bar = document.createElement('div');
+    bar.className = 'tl-audio' + (cl.over ? '' : ' cut');
+    bar.style.left = opts.left;
+    bar.style.width = opts.width;
+    bar.style.marginTop = (opts.lane * C.TL_AUDIO_LANE_PX) + 'px';
+    bar.title = '🔊 ' + cl.name + '：ドラッグでタイミングを動かす／端をドラッグで頭・お尻を切る／タップで試聴';
+    bar.innerHTML = '<canvas></canvas><span class="tl-aud-name"></span><div class="tl-aud-edge l"></div><div class="tl-aud-edge r"></div>';
+    bar.querySelector('.tl-aud-name').textContent = '🔊 ' + cl.name;
+    opts.container.appendChild(bar);
+    bar.addEventListener('pointerdown', function (e) { stripDown(e, bar, cl, opts); });
+    return { el: bar, drawn: drawWave(bar, cl, opts.widthPx) };
+  }
+
+  function drawWave(bar, cl, w) {
+    const cv = bar.querySelector('canvas');
+    const dpr = window.devicePixelRatio || 1;
+    const h = 16;
+    w = Math.max(1, Math.min(8000, w));
+    const n = Math.max(1, Math.min(2000, Math.round(w / 2)));
+    const p = peaks(cl.src, cl.from, cl.from + (cl.end - cl.start), n);
+    cv.width = Math.max(1, Math.round(w * dpr));
+    cv.height = Math.round(h * dpr);
+    if (!p) return false;
+    const g = cv.getContext('2d');
+    g.scale(dpr, dpr);
+    g.fillStyle = '#f08c00';
+    const bw = w / n;
+    for (let i = 0; i < n; i++) {
+      const v = Math.max(0.04, p[i]) * (h - 2) / 2;
+      g.fillRect(i * bw, h / 2 - v, Math.max(1, bw - 0.5), v * 2);
+    }
+    return true;
+  }
+
+  let sDrag = null;
+  function stripDown(e, bar, cl, opts) {
+    if (sDrag) return;
+    e.stopPropagation();
+    e.preventDefault();
+    const card = Store.get(cl.id);
+    if (!card || !card.audio) return;
+    const r = bar.getBoundingClientRect();
+    const grab = C.TL_AUDIO_EDGE_PX * (e.pointerType === 'mouse' ? 1 : 1.8);
+    const mode = e.clientX - r.left < grab ? 'in' : (r.right - e.clientX < grab ? 'out' : 'move');
+    const d = sDrag = { pointerId: e.pointerId, bar: bar, opts: opts, mode: mode, x0: e.clientX, a0: Object.assign({}, card.audio),
+      left0: bar.offsetLeft, width0: bar.offsetWidth, moved: false, next: null, tip: null };
+    function move(ev) { if (ev.pointerId === d.pointerId) stripMove(ev, d); }
+    function up(ev) {
+      if (ev.pointerId !== d.pointerId || sDrag !== d) return;
+      sDrag = null;
+      ['pointermove', 'pointerup', 'pointercancel', 'lostpointercapture'].forEach(function (t, k) { bar.removeEventListener(t, k ? up : move); });
+      if (d.tip) d.tip.remove();
+      bar.classList.remove('dragging');
+      const ok = ev.type !== 'pointercancel';
+      opts.onEnd(ok && d.moved ? d.next : null, ok && d.moved);
+    }
+    bar.setPointerCapture(e.pointerId);
+    bar.addEventListener('pointermove', move);
+    ['pointerup', 'pointercancel', 'lostpointercapture'].forEach(function (t) { bar.addEventListener(t, up); });
+    opts.onStart();
+  }
+
+  function stripMove(e, d) {
+    const dx = e.clientX - d.x0;
+    if (!d.moved && Math.abs(dx) < C.DRAG_THRESHOLD_MOUSE_PX) return;
+    d.moved = true;
+    d.bar.classList.add('dragging');
+    const fps = d.opts.fps;
+    const pps = d.opts.pxPerSec();
+    const a = d.a0;
+    const trimIn = a.trimIn || 0, trimOut = a.trimOut || 0, shift = a.shift || 0;
+    let sec = Math.round(dx / pps * fps) / fps; // 1コマ刻み
+    const next = Object.assign({}, a);
+    let label;
+    if (d.mode === 'move') {
+      next.shift = round2(shift + sec);
+      d.bar.style.left = (d.left0 + sec * pps) + 'px';
+      label = 'ずらし ' + signed(next.shift) + '秒';
+    } else if (d.mode === 'in') {
+      sec = U.clamp(sec, -trimIn, a.dur - trimIn - trimOut - C.AUDIO_MIN_LEN_SEC);
+      next.trimIn = round2(trimIn + sec);
+      next.shift = round2(shift + sec);
+      d.bar.style.left = (d.left0 + sec * pps) + 'px';
+      d.bar.style.width = Math.max(6, d.width0 - sec * pps) + 'px';
+      label = '頭を ' + next.trimIn.toFixed(2) + '秒 切る';
+    } else {
+      sec = U.clamp(sec, -(a.dur - trimIn - trimOut - C.AUDIO_MIN_LEN_SEC), trimOut);
+      next.trimOut = round2(trimOut - sec);
+      d.bar.style.width = Math.max(6, d.width0 + sec * pps) + 'px';
+      label = 'お尻を ' + next.trimOut.toFixed(2) + '秒 切る';
+    }
+    d.next = next;
+    if (!d.tip) { d.tip = document.createElement('div'); d.tip.className = 'tl-aud-tip'; d.bar.parentNode.appendChild(d.tip); }
+    d.tip.textContent = label + '（長さ ' + playLen(next).toFixed(2) + '秒）';
+    d.tip.style.left = Math.max(0, d.bar.offsetLeft) + 'px';
+    d.tip.style.top = (d.bar.offsetTop - 18) + 'px';
+  }
+
+  function round2(v) { return Math.round(v * 100) / 100; }
+  function signed(v) { return (v > 0 ? '+' : v < 0 ? '−' : '±') + Math.abs(v).toFixed(2); }
 
   // ---- Vコンテの再生 ----
   // 使う音を前もってデコードしておく
@@ -362,8 +477,8 @@
   }
 
   function init() {
-    document.getElementById('aud-rec').addEventListener('click', function () { rec ? stopRecording(false) : startRecording(); });
-    document.getElementById('aud-file').addEventListener('click', pickFile);
+    document.getElementById('aud-rec').addEventListener('click', function () { rec ? stopRecording(false) : startRecording(cardId); });
+    document.getElementById('aud-file').addEventListener('click', function () { pickFile(cardId); });
     document.getElementById('aud-play').addEventListener('click', togglePreview);
     document.getElementById('aud-del').addEventListener('click', remove);
     document.getElementById('aud-fit').addEventListener('click', fitDuration);
@@ -388,6 +503,11 @@
     clip: clip,
     playLen: playLen,
     peaks: peaks,
+    makeStrip: makeStrip,
+    startRecording: startRecording,
+    stopRecording: stopRecording,
+    isRecording: function () { return !!rec; },
+    pickFile: pickFile,
     prepare: prepare,
     playClips: playClips,
     mix: mix,

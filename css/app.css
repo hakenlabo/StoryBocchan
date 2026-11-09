@@ -514,6 +514,11 @@ body[data-view="vconte"] .toolbar > * { visibility: hidden; }
   background: #4a4e55;
 }
 .vc-seg.current { background: #5b7fc4; color: #fff; }
+.vc-audio { position: relative; margin: 4px 16px 0; height: var(--vc-audio-h, 0px); overflow: hidden; flex: none; }
+.vc-audio .tl-audio { top: 0; background: rgba(240,140,0,.28); }
+.vc-audio .tl-aud-name { color: #ffd8a8; text-shadow: none; }
+.vc-audio .tl-aud-tip { background: #000; }
+.vc-controls .vc-dub.recording { background: #e03131; border-color: #e03131; }
 .vc-playhead { position: absolute; top: -4px; bottom: -4px; width: 2px; margin-left: -1px; background: #ff5a5a; pointer-events: none; }
 .vc-controls {
   display: flex;
@@ -809,7 +814,7 @@ body[data-view="outline"] .toolbar > * { visibility: hidden; }
 .tl-audio .tl-aud-name { position: absolute; left: 10px; top: 1px; font-size: 10px; line-height: 14px; color: #8a4b00; white-space: nowrap; pointer-events: none; text-shadow: 0 0 2px #fff; }
 .tl-audio .tl-aud-edge { position: absolute; top: 0; bottom: 0; width: 6px; background: rgba(240,140,0,.55); cursor: ew-resize; }
 .tl-audio .tl-aud-edge.l { left: 0; } .tl-audio .tl-aud-edge.r { right: 0; }
-.tl-aud-tip { position: absolute; top: calc(var(--tl-thumb-h) + 84px); padding: 1px 6px; font-size: 11px; background: #333; color: #fff; border-radius: 3px; white-space: nowrap; pointer-events: none; z-index: 6; }
+.tl-aud-tip { position: absolute; padding: 1px 6px; font-size: 11px; background: #333; color: #fff; border-radius: 3px; white-space: nowrap; pointer-events: none; z-index: 6; }
 .tl-playhead { position: absolute; top: 20px; bottom: 0; width: 2px; background: #e03131; pointer-events: none; z-index: 6; }
 .aud-info { font-size: 12px; color: var(--ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 100%; }
 
