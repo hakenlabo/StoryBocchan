@@ -429,6 +429,21 @@
     document.getElementById('vc-start').addEventListener('click', function () { seek(0); });
     document.getElementById('vc-prev').addEventListener('click', function () { seekCut(-1); });
     document.getElementById('vc-next').addEventListener('click', function () { seekCut(1); });
+    document.getElementById('vc-add').addEventListener('click', function () {
+      pause();
+      const i = cutIndexAt(frame);
+      const base = i >= 0 ? cuts[i] : null;
+      const card = AP.MapView.addCutAfter(base ? base.card.id : null, base ? base.sceneId : null);
+      rebuild();
+      const j = cuts.findIndex(function (c) { return c.card.id === card.id; });
+      if (j < 0) U.toast('カットを足しました（このシーンはシーン構成でオフになっています）');
+      else {
+        buildBar();
+        renderSequence();
+        seek(cuts[j].start);
+        U.toast('カットを足しました', { label: '絵を描く', fn: function () { AP.Draw.open(card.id); } });
+      }
+    });
     document.getElementById('vc-camera').addEventListener('click', function () {
       const i = cutIndexAt(frame);
       if (i >= 0) { pause(); AP.Camera.open(cuts[i].card.id); }

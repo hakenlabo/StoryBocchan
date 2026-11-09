@@ -326,6 +326,47 @@
     return card;
   }
 
+  // タイムライン・Vコンテの「＋ カット」：baseId（タイムラインのカード）の後ろに新しいカットを足す。
+  // 同じカットにまとめた絵の途中なら、そのカットの最後の後ろ。baseId なしは sceneId のシーンの最後（シーンもなければ新しいカード）。
+  // マップでは基準のカードの次の兄弟（シーンのいちばん上のカードなら子）にして、同じシーンに入れる
+  function addCutAfter(baseId, sceneId) {
+    if (editingId) finishEdit();
+    Store.checkpoint();
+    let base = baseId ? Store.get(baseId) : null;
+    const sc = base ? Store.sceneOf(base) : sceneId;
+    const list = sc ? Store.timelineCards(sc) : [];
+    if (!base && list.length) base = list[list.length - 1];
+    if (base) {
+      const g = Store.cutGroups(sc).find(function (gr) { return gr.cards.some(function (c) { return c.id === base.id; }); });
+      if (g) base = g.cards[g.cards.length - 1];
+    }
+    const src = base ? Store.source(base) : null;
+    let card;
+    if (!src) {
+      const r = vp.getBoundingClientRect();
+      const w = clientToWorld(r.left + r.width / 2, r.top + r.height / 2);
+      card = Store.createCard({ mapPos: freeSpot(w.x - C.CARD_W / 2, w.y - C.CARD_H_ESTIMATE / 2) });
+    } else {
+      const parentId = src.parentId || (sc !== Store.LOOSE_SCENE ? src.id : null);
+      const parent = parentId ? Store.get(parentId) : null;
+      if (parent && parent.status === 'active') {
+        card = Store.createCard({ parentId: parent.id, mapPos: { x: src.mapPos.x, y: src.mapPos.y } });
+        autoPlace(card.id, parent.id);
+        if (parent.id === src.parentId) {
+          const sibs = Store.treeChildren(Store.treeParentId(src));
+          Store.moveInTree(card.id, Store.treeParentId(src), sibs.findIndex(function (c) { return c.id === src.id; }) + 1);
+        }
+      } else {
+        card = Store.createCard({ mapPos: freeSpot(src.mapPos.x, src.mapPos.y + cardH(src.id) + C.CHILD_GAP_Y) });
+      }
+    }
+    const vis = Store.timelineCards(Store.sceneOf(card)).filter(function (c) { return c.id !== card.id; });
+    const i = base ? vis.findIndex(function (c) { return c.id === base.id; }) : -1;
+    Store.adopt(card.id, i >= 0 ? i + 1 : vis.length);
+    select(card.id);
+    return card;
+  }
+
   // ------------------------------------------------------------
   // 整列
   // ------------------------------------------------------------
@@ -850,6 +891,7 @@
     createAtCenter: createAtCenter,
     addChildOfSelected: addChildOfSelected,
     addNextCard: addNextCard,
+    addCutAfter: addCutAfter,
     peel: peel,
     attachTo: attachTo,
     autoPlace: autoPlace,

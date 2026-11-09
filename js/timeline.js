@@ -27,6 +27,19 @@
       (m > 0 ? '（' + m + '分' + s + '秒）' : '') + '　' + frames + 'コマ';
   }
 
+  // 選んでいるカード（このシーンのタイムラインにあるもの）の後ろに新しいカット。なければシーンの最後
+  function addCut() {
+    const selId = AP.MapView.selected();
+    const list = scene ? Store.timelineCards(scene) : [];
+    const base = list.filter(function (c) { return Store.source(c).id === selId; }).pop();
+    const card = AP.MapView.addCutAfter(base ? base.id : null, scene);
+    scene = Store.sceneOf(card);
+    render();
+    const el = track.querySelector('.tl-card[data-src="' + card.id + '"]');
+    if (el) el.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+    U.toast('カットを足しました', { label: '絵を描く', fn: function () { AP.Draw.open(card.id); } });
+  }
+
   // ------------------------------------------------------------
   // 描画
   // ------------------------------------------------------------
@@ -398,6 +411,7 @@
     scrollEl.addEventListener('wheel', onWheel, { passive: false });
     document.getElementById('tl-zoom-in').addEventListener('click', function () { setZoom(zoom * C.TL_ZOOM_STEP); });
     document.getElementById('tl-zoom-out').addEventListener('click', function () { setZoom(zoom / C.TL_ZOOM_STEP); });
+    document.getElementById('tl-add').addEventListener('click', addCut);
 
     document.addEventListener('ap:select', function (e) {
       // 選んだカードのシーンに切り替える
